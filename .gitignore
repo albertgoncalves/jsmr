@@ -1,0 +1,11 @@
+*
+!.gitignore
+!*.nix
+!.shellhook
+!.clang-format
+!src/
+!*.h
+!*.c
+!main
+!bytecode/
+!*.obj
