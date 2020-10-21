@@ -63,28 +63,36 @@ static u16 length(const char* x) {
         exit(EXIT_FAILURE);                            \
     }
 
-#define SET_STRING(file, string, len)                     \
-    if (fwrite(string, sizeof(char), len, file) != len) { \
-        exit(EXIT_FAILURE);                               \
+static void set_constant_pool_string(File* file, const char* string) {
+    const u8  utf8_id = 1;
+    const u16 len = (u16)length(string);
+    const u16 swap_len = __builtin_bswap16(len);
+    SET_BYTES(file, &utf8_id);
+    SET_BYTES(file, &swap_len);
+    if (fwrite(string, sizeof(char), len, file) != len) {
+        exit(EXIT_FAILURE);
     }
+}
 
 static void set_constant_pool_class(File*       file,
                                     u16         index,
                                     const char* string) {
-    {
-        const u8  utf8_id = 1;
-        const u16 len = (u16)length(string);
-        const u16 swap_len = __builtin_bswap16(len);
-        SET_BYTES(file, &utf8_id);
-        SET_BYTES(file, &swap_len);
-        SET_STRING(file, string, len);
-    }
-    {
-        const u8  class_id = 7;
-        const u16 swap_index = __builtin_bswap16(index);
-        SET_BYTES(file, &class_id);
-        SET_BYTES(file, &swap_index);
-    }
+    set_constant_pool_string(file, string);
+    const u8  class_id = 7;
+    const u16 swap_index = __builtin_bswap16(index);
+    SET_BYTES(file, &class_id);
+    SET_BYTES(file, &swap_index);
+}
+
+static void set_constant_pool_indices(File* file,
+                                      u8    id,
+                                      u16   index_a,
+                                      u16   index_b) {
+    const u16 swap_index_a = __builtin_bswap16(index_a);
+    const u16 swap_index_b = __builtin_bswap16(index_b);
+    SET_BYTES(file, &id);
+    SET_BYTES(file, &swap_index_a);
+    SET_BYTES(file, &swap_index_b);
 }
 
 i32 main(i32 n, const char** args) {
@@ -94,24 +102,17 @@ i32 main(i32 n, const char** args) {
     /* NOTE: See `https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html`. */
     const Version version = {
         .magic = __builtin_bswap32(0xCAFEBABE),
-        .minor_version = __builtin_bswap16(0),
+        .minor_version = 0,
         .major_version = __builtin_bswap16(58),
     };
-    const char* constant_pool[] = {
-        "Main",
-        "java/lang/Object",
-        "java/lang/System",
-        "java/io/PrintStream",
-        "Hello, world!",
-    };
-    const u8    m = sizeof(constant_pool) / sizeof(char*);
-    const u16   constant_pool_size = __builtin_bswap16((m * 2) + 1);
+    const u16   constant_pool_size = __builtin_bswap16(22);
     const Flags flags = {
-        .access_modifiers = __builtin_bswap16(0x0021),
+        .access_modifiers = __builtin_bswap16(33),
         .class_constant_index = __builtin_bswap16(2),
         .super_constant_index = __builtin_bswap16(4),
     };
-    const u16 empty = __builtin_bswap16(0);
+    const u16 method_size = __builtin_bswap16(1);
+    const u16 empty = 0;
     {
         File* file = fopen(args[1], "wb");
         if (file == NULL) {
@@ -119,14 +120,38 @@ i32 main(i32 n, const char** args) {
         }
         SET_BYTES(file, &version);
         SET_BYTES(file, &constant_pool_size);
-        for (u8 i = 0; i < m; ++i) {
-            set_constant_pool_class(file,
-                                    (u16)((i * 2) + 1),
-                                    constant_pool[i]);
+        set_constant_pool_class(file, 1, "Main");
+        set_constant_pool_class(file, 3, "java/lang/Object");
+        set_constant_pool_class(file, 5, "java/lang/System");
+        set_constant_pool_class(file, 7, "java/io/PrintStream");
+        set_constant_pool_class(file, 9, "Hello, world!");
+        {
+            set_constant_pool_string(file, "out");
+            set_constant_pool_string(file, "Ljava/io/PrintStream;");
+            set_constant_pool_indices(file, 12, 11, 12);
+            set_constant_pool_indices(file, 9, 6, 13);
         }
+        {
+            set_constant_pool_string(file, "println");
+            set_constant_pool_string(file, "(Ljava/lang/String;)V");
+            set_constant_pool_indices(file, 12, 15, 16);
+            set_constant_pool_indices(file, 10, 8, 17);
+        }
+        set_constant_pool_string(file, "main");
+        set_constant_pool_string(file, "([Ljava/lang/String;)V");
+        set_constant_pool_string(file, "Code");
         SET_BYTES(file, &flags);
         SET_BYTES(file, &empty);
         SET_BYTES(file, &empty);
+        SET_BYTES(file, &method_size);
+        {
+            u16 method_access_modifiers = __builtin_bswap16(9);
+            u16 index_name = __builtin_bswap16(19);
+            u16 index_type = __builtin_bswap16(20);
+            SET_BYTES(file, &method_access_modifiers);
+            SET_BYTES(file, &index_name);
+            SET_BYTES(file, &index_type);
+        }
         SET_BYTES(file, &empty);
         SET_BYTES(file, &empty);
         fclose(file);
