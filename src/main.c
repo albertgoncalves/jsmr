@@ -195,7 +195,7 @@ i32 main(i32 n, const char** args) {
     {
         const Flags flags = {
             .access_modifiers =
-                __builtin_bswap16(ACCESS_SUPER + ACCESS_PUBLIC),
+                __builtin_bswap16(ACCESS_PUBLIC + ACCESS_SUPER),
             .class_constant_index = __builtin_bswap16(2),
             .super_constant_index = __builtin_bswap16(4),
         };
