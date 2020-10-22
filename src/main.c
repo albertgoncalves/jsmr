@@ -11,7 +11,8 @@ typedef FILE File;
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
-typedef int32_t  i32;
+
+typedef int32_t i32;
 
 typedef enum {
     ACCESS_PUBLIC = 0x0001,
@@ -102,6 +103,7 @@ static void set_u8(File* file, u8 bytes) {
 }
 
 static void set_u16(File* file, u16 bytes) {
+    /* NOTE: See `https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html`. */
     const u16 swap_bytes = __builtin_bswap16(bytes);
     SET_BYTES(file, &swap_bytes);
 }
@@ -162,7 +164,6 @@ i32 main(i32 n, const char** args) {
     if (file == NULL) {
         exit(EXIT_FAILURE);
     }
-    /* NOTE: See `https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html`. */
     {
         const Version version = {
             .magic = __builtin_bswap32(0xCAFEBABE),
@@ -208,7 +209,6 @@ i32 main(i32 n, const char** args) {
         /* NOTE: Nothing inscribed into `fields` section. */
         SET_BYTES(file, &EMPTY);
     }
-
     {
         const Method method = {
             .size = __builtin_bswap16(1),
