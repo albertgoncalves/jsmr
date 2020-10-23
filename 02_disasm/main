@@ -13,8 +13,8 @@ clang-format -i -verbose "$wd/src"/* 2>&1 | sed 's/\/.*\///g'
 
 start=$(now)
 gcc -g -o "$wd/bin/main" "${C_FLAGS[@]}" "$wd/src/main.c"
-javac -d "$wd/bytecode" "$wd/src/Main.java"
+javac -d "$wd/out" "$wd/src/Main.java"
 end=$(now)
 python3 -c "print(\"Compiled! ({:.3f}s)\n\".format(${end} - ${start}))"
 
-"$wd/bin/main" "$wd/bytecode/Main.class"
+"$wd/bin/main" "$wd/out/Main.class"
