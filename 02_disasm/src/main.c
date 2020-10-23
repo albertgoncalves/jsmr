@@ -22,8 +22,8 @@ typedef enum {
 
 typedef struct {
     union {
-        u32 bytes_u32;
-        u16 bytes_u16;
+        u32 u32;
+        u16 u16;
     };
     Tag tag;
 } Token;
@@ -122,18 +122,18 @@ i32 main(i32 n, const char** args) {
             exit(EXIT_FAILURE);
         }
         tokens[memory->token_index].tag = MAGIC;
-        tokens[memory->token_index++].bytes_u32 = pop_u32(memory);
+        tokens[memory->token_index++].u32 = pop_u32(memory);
     }
     {
         tokens[memory->token_index].tag = MINOR_VERSION;
-        tokens[memory->token_index++].bytes_u16 = pop_u16(memory);
+        tokens[memory->token_index++].u16 = pop_u16(memory);
         tokens[memory->token_index].tag = MAJOR_VERSION;
-        tokens[memory->token_index++].bytes_u16 = pop_u16(memory);
+        tokens[memory->token_index++].u16 = pop_u16(memory);
     }
     {
         u16 constant_pool_size = pop_u16(memory);
         tokens[memory->token_index].tag = CONSTANT_POOL_SIZE;
-        tokens[memory->token_index++].bytes_u16 = constant_pool_size;
+        tokens[memory->token_index++].u16 = constant_pool_size;
         for (u16 i = 1; i < constant_pool_size; ++i) {
             u8 constant = pop_u8(memory);
             printf("! 0x%X\n", constant);
@@ -143,19 +143,19 @@ i32 main(i32 n, const char** args) {
     for (usize i = 0; i < memory->token_index; ++i) {
         switch (tokens[i].tag) {
         case MAGIC: {
-            printf("  (u32) 0x%X\n\n", tokens[i].bytes_u32);
+            printf("  (u32) 0x%X\n\n", tokens[i].u32);
             break;
         }
         case MINOR_VERSION: {
-            printf("  (u16) Minor Version : %hu\n", tokens[i].bytes_u16);
+            printf("  (u16) Minor Version : %hu\n", tokens[i].u16);
             break;
         }
         case MAJOR_VERSION: {
-            printf("  (u16) Major Version : %hu\n\n", tokens[i].bytes_u16);
+            printf("  (u16) Major Version : %hu\n\n", tokens[i].u16);
             break;
         }
         case CONSTANT_POOL_SIZE: {
-            printf("  (u16) Constant Pool Size : %hu\n", tokens[i].bytes_u16);
+            printf("  (u16) Constant Pool Size : %hu\n", tokens[i].u16);
             break;
         }
         }
