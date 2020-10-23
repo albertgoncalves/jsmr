@@ -85,7 +85,7 @@ typedef struct {
 
 static const u16 EMPTY = 0;
 
-static u16 length(const char* x) {
+static u16 get_len(const char* x) {
     u16 i = 0;
     while (x[i] != '\0') {
         ++i;
@@ -109,7 +109,7 @@ static void set_u16(File* file, u16 bytes) {
 }
 
 static void set_constant_pool_utf8(File* file, const char* string) {
-    const u16 len = (u16)length(string);
+    const u16 len = (u16)get_len(string);
     set_u8(file, CONSTANT_UTF8);
     set_u16(file, len);
     if (fwrite(string, sizeof(char), len, file) != len) {
