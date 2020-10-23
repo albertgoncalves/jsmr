@@ -3,7 +3,6 @@ mkShell {
     buildInputs = [
         clang_10
         cppcheck
-        glibcLocales
         openjdk
         shellcheck
         valgrind
