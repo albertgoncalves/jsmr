@@ -36,6 +36,27 @@ typedef struct {
     usize token_index;
 } Memory;
 
+static void set_file_to_bytes(Memory* memory, const char* filename) {
+    File* file = fopen(filename, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "Unable to open file\n");
+        exit(EXIT_FAILURE);
+    }
+    fseek(file, 0, SEEK_END);
+    usize size = (usize)ftell(file);
+    rewind(file);
+    if (SIZE < size) {
+        fprintf(stderr, "File does not fit into memory\n");
+        exit(EXIT_FAILURE);
+    }
+    if (fread(&memory->bytes, sizeof(u8), size, file) != size) {
+        fprintf(stderr, "`fread` error\n");
+        exit(EXIT_FAILURE);
+    }
+    memory->size = size;
+    fclose(file);
+}
+
 #define OUT_OF_BOUNDS                       \
     {                                       \
         fprintf(stderr, "Out of bounds\n"); \
@@ -43,8 +64,7 @@ typedef struct {
     }
 
 static u8 pop_u8(Memory* memory) {
-    usize next_index = memory->byte_index + 1;
-    if (memory->size < next_index) {
+    if (memory->size <= memory->byte_index) {
         OUT_OF_BOUNDS;
     }
     return memory->bytes[memory->byte_index++];
@@ -73,46 +93,11 @@ static u32 pop_u32(Memory* memory) {
     return bytes;
 }
 
-i32 main(i32 n, const char** args) {
-    printf("sizeof(u8)     : %zu\n"
-           "sizeof(Type)   : %zu\n"
-           "sizeof(Token)  : %zu\n"
-           "sizeof(Memory) : %zu\n"
-           "\n",
-           sizeof(u8),
-           sizeof(Tag),
-           sizeof(Token),
-           sizeof(Memory));
-    if (n < 2) {
-        fprintf(stderr, "No file provided\n");
-        exit(EXIT_FAILURE);
-    }
-    Memory* memory = malloc(sizeof(Memory));
-    if (memory == NULL) {
-        fprintf(stderr, "Allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-    {
-        File* file = fopen(args[1], "rb");
-        if (file == NULL) {
-            fprintf(stderr, "Unable to open file\n");
-            exit(EXIT_FAILURE);
-        }
-        fseek(file, 0, SEEK_END);
-        usize size = (usize)ftell(file);
-        rewind(file);
-        if (SIZE < size) {
-            fprintf(stderr, "File does not fit into memory\n");
-            exit(EXIT_FAILURE);
-        }
-        if (fread(&memory->bytes, sizeof(u8), size, file) != size) {
-            fprintf(stderr, "`fread` error\n");
-            exit(EXIT_FAILURE);
-        }
-        memory->size = size;
-        fclose(file);
-    }
-    Token* tokens = memory->tokens;
+#undef OUT_OF_BOUNDS
+
+#define ALLOC(memory) &memory->tokens[memory->token_index++]
+
+static void set_tokens(Memory* memory) {
     memory->byte_index = 0;
     memory->token_index = 0;
     {
@@ -121,25 +106,37 @@ i32 main(i32 n, const char** args) {
             fprintf(stderr, "Incorrect magic constant\n");
             exit(EXIT_FAILURE);
         }
-        tokens[memory->token_index].tag = MAGIC;
-        tokens[memory->token_index++].u32 = pop_u32(memory);
+        Token* token = ALLOC(memory);
+        token->tag = MAGIC;
+        token->u32 = magic;
     }
     {
-        tokens[memory->token_index].tag = MINOR_VERSION;
-        tokens[memory->token_index++].u16 = pop_u16(memory);
-        tokens[memory->token_index].tag = MAJOR_VERSION;
-        tokens[memory->token_index++].u16 = pop_u16(memory);
+        Token* token = ALLOC(memory);
+        token->tag = MINOR_VERSION;
+        token->u16 = pop_u16(memory);
     }
     {
-        u16 constant_pool_size = pop_u16(memory);
-        tokens[memory->token_index].tag = CONSTANT_POOL_SIZE;
-        tokens[memory->token_index++].u16 = constant_pool_size;
+        Token* token = ALLOC(memory);
+        token->tag = MAJOR_VERSION;
+        token->u16 = pop_u16(memory);
+    }
+    {
+        u16    constant_pool_size = pop_u16(memory);
+        Token* token = ALLOC(memory);
+        token->tag = CONSTANT_POOL_SIZE;
+        token->u16 = constant_pool_size;
         for (u16 i = 1; i < constant_pool_size; ++i) {
             u8 constant = pop_u8(memory);
             printf("! 0x%X\n", constant);
             break;
         }
     }
+}
+
+#undef ALLOC
+
+static void print_tokens(Memory* memory) {
+    Token* tokens = memory->tokens;
     for (usize i = 0; i < memory->token_index; ++i) {
         switch (tokens[i].tag) {
         case MAGIC: {
@@ -160,6 +157,30 @@ i32 main(i32 n, const char** args) {
         }
         }
     }
+}
+
+i32 main(i32 n, const char** args) {
+    printf("sizeof(u8)     : %zu\n"
+           "sizeof(Type)   : %zu\n"
+           "sizeof(Token)  : %zu\n"
+           "sizeof(Memory) : %zu\n"
+           "\n",
+           sizeof(u8),
+           sizeof(Tag),
+           sizeof(Token),
+           sizeof(Memory));
+    if (n < 2) {
+        fprintf(stderr, "No file provided\n");
+        exit(EXIT_FAILURE);
+    }
+    Memory* memory = malloc(sizeof(Memory));
+    if (memory == NULL) {
+        fprintf(stderr, "Allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+    set_file_to_bytes(memory, args[1]);
+    set_tokens(memory);
+    print_tokens(memory);
     printf("\n[%zu bytes left!]\n", memory->size - memory->byte_index);
     free(memory);
     return EXIT_SUCCESS;
