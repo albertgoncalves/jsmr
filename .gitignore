@@ -8,3 +8,4 @@
 !*.c
 !main
 !01_hello_world/
+!02_disasm/
