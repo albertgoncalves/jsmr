@@ -2,60 +2,19 @@
 
 set -euo pipefail
 
-export FLAGS=(
-    "-fshort-enums"
-    "-fsingle-precision-constant"
-    "-march=native"
-    "-O1"
-    "-Wall"
-    "-Wcast-align"
-    "-Wcast-align=strict"
-    "-Wcast-qual"
-    "-Wconversion"
-    "-Wdate-time"
-    "-Wdouble-promotion"
-    "-Wduplicated-branches"
-    "-Wduplicated-cond"
-    "-Werror"
-    "-Wextra"
-    "-Wfatal-errors"
-    "-Wfloat-equal"
-    "-Wformat=2"
-    "-Wformat-signedness"
-    "-Winline"
-    "-Wlogical-op"
-    "-Wmissing-declarations"
-    "-Wmissing-include-dirs"
-    "-Wnull-dereference"
-    "-Wpacked"
-    "-Wpedantic"
-    "-Wpointer-arith"
-    "-Wredundant-decls"
-    "-Wshadow"
-    "-Wstack-protector"
-    "-Wswitch-enum"
-    "-Wtrampolines"
-    "-Wundef"
-    "-Wunused"
-    "-Wunused-macros"
-    "-Wwrite-strings"
-)
-
-now () {
-    date +%s.%N
-}
+wd="$WD/02_disasm"
 
 cppcheck \
     --enable=all \
     --suppress=missingIncludeSystem \
-    "$WD/src" \
+    "$wd/src" \
     | sed 's/\/.*\/\(.*\) \.\.\./\1/g'
-clang-format -i -verbose "$WD/src"/* 2>&1 | sed 's/\/.*\///g'
-(
-    start=$(now)
-    gcc -g -o "$WD/bin/main" "${FLAGS[@]}" "$WD/src/main.c"
-    javac -d "$WD/bytecode" "$WD/src/Main.java"
-    end=$(now)
-    python3 -c "print(\"Compiled! ({:.3f}s)\n\".format(${end} - ${start}))"
-)
-"$WD/bin/main" "$WD/bytecode/Main.class"
+clang-format -i -verbose "$wd/src"/* 2>&1 | sed 's/\/.*\///g'
+
+start=$(now)
+gcc -g -o "$wd/bin/main" "${C_FLAGS[@]}" "$wd/src/main.c"
+javac -d "$wd/bytecode" "$wd/src/Main.java"
+end=$(now)
+python3 -c "print(\"Compiled! ({:.3f}s)\n\".format(${end} - ${start}))"
+
+"$wd/bin/main" "$wd/bytecode/Main.class"
