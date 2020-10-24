@@ -13,7 +13,7 @@ typedef int32_t i32;
 
 #define SIZE_BYTES  1024
 #define SIZE_TOKENS 128
-#define SIZE_CHARS  64
+#define SIZE_CHARS  512
 
 typedef enum {
     MAGIC,
@@ -30,8 +30,8 @@ typedef enum {
     // CONSTANT_TAG_LONG = 5,
     // CONSTANT_TAG_DOUBLE = 6,
     CONSTANT_TAG_CLASS = 7,
-    // CONSTANT_TAG_STRING = 8,
-    // CONSTANT_TAG_FIELD_REF = 9,
+    CONSTANT_TAG_STRING = 8,
+    CONSTANT_TAG_FIELD_REF = 9,
     CONSTANT_TAG_METHOD_REF = 10,
     // CONSTANT_TAG_INTERFACE_METHOD_REF = 11,
     CONSTANT_TAG_NAME_AND_TYPE = 12,
@@ -44,13 +44,17 @@ typedef enum {
 } ConstantTag;
 
 typedef struct {
-    u16         length;
+    u16         size;
     const char* string;
 } ConstantUtf8;
 
 typedef struct {
     u16 name_index;
 } ConstantClass;
+
+typedef struct {
+    u16 string_index;
+} ConstantString;
 
 typedef struct {
     u16 class_index;
@@ -65,6 +69,7 @@ typedef struct {
 typedef struct {
     union {
         ConstantUtf8        utf8;
+        ConstantString      string;
         ConstantClass       class_;
         ConstantRef         ref;
         ConstantNameAndType name_and_type;
@@ -191,22 +196,22 @@ static void set_tokens(Memory* memory) {
             token->u16 = constant_pool_size;
         }
         for (u16 i = 1; i < constant_pool_size; ++i) {
-            Token* token = alloc_token(memory);
+            ConstantTag tag = (ConstantTag)pop_u8(memory);
+            Token*      token = alloc_token(memory);
             token->tag = CONSTANT;
             token->constant.index = i;
-            ConstantTag tag = (ConstantTag)pop_u8(memory);
             token->constant.tag = tag;
             switch (tag) {
             case CONSTANT_TAG_UTF8: {
-                u16 length = pop_u16(memory);
-                if (SIZE_CHARS < (memory->char_index + length + 1)) {
+                u16 utf8_size = pop_u16(memory);
+                if (SIZE_CHARS < (memory->char_index + utf8_size + 1)) {
                     fprintf(stderr, "[ERROR] Unable to allocate string\n");
                     exit(EXIT_FAILURE);
                 }
-                token->constant.utf8.length = length;
+                token->constant.utf8.size = utf8_size;
                 token->constant.utf8.string =
                     &memory->chars[memory->char_index];
-                for (u16 j = 0; j < length; ++j) {
+                for (u16 j = 0; j < utf8_size; ++j) {
                     memory->chars[memory->char_index++] = (char)pop_u8(memory);
                 }
                 memory->chars[memory->char_index++] = '\0';
@@ -216,6 +221,11 @@ static void set_tokens(Memory* memory) {
                 token->constant.class_.name_index = pop_u16(memory);
                 break;
             }
+            case CONSTANT_TAG_STRING: {
+                token->constant.string.string_index = pop_u16(memory);
+                break;
+            }
+            case CONSTANT_TAG_FIELD_REF:
             case CONSTANT_TAG_METHOD_REF: {
                 token->constant.ref.class_index = pop_u16(memory);
                 token->constant.ref.name_and_type_index = pop_u16(memory);
@@ -228,7 +238,10 @@ static void set_tokens(Memory* memory) {
                 break;
             }
             default: {
-                printf("! %hhu !\n\n", (u8)tag);
+                fprintf(stderr,
+                        "[ERROR] `{ ConstantTag %hhu }` unimplemented\n\n",
+                        (u8)tag);
+                fflush(stderr);
                 return;
             }
             }
@@ -317,16 +330,17 @@ i32 main(i32 n, const char** args) {
         fprintf(stderr, "[ERROR] No file provided\n");
         exit(EXIT_FAILURE);
     }
-    Memory* memory = malloc(sizeof(Memory));
+    Memory* memory = calloc(1, sizeof(Memory));
     if (memory == NULL) {
-        fprintf(stderr, "[ERROR] `malloc` failed\n");
+        fprintf(stderr, "[ERROR] `calloc` failed\n");
         exit(EXIT_FAILURE);
     }
     set_file_to_bytes(memory, args[1]);
     set_tokens(memory);
     print_tokens(memory);
+    fflush(stdout);
     fprintf(stderr,
-            "\n\n[INFO] %zu bytes left!\n",
+            "\n[INFO] %zu bytes left!\n",
             memory->file_size - memory->byte_index);
     free(memory);
     return EXIT_SUCCESS;
