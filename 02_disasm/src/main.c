@@ -22,6 +22,12 @@ typedef enum {
     CONSTANT_POOL_SIZE,
     CONSTANT,
     ACCESS_FLAGS,
+    THIS_CLASS,
+    SUPER_CLASS,
+    INTERFACES_SIZE,
+    // INTERFACE_U16,
+    FIELDS_SIZE,
+    // FIELD_INFO,
 } Tag;
 
 typedef enum {
@@ -252,7 +258,8 @@ static void set_tokens(Memory* memory) {
             }
             default: {
                 fprintf(stderr,
-                        "[ERROR] `{ ConstantTag %hhu }` unimplemented\n\n",
+                        "[ERROR] `{ ConstantTag tag (%hhu) }` "
+                        "unimplemented\n\n",
                         (u8)tag);
                 fflush(stderr);
                 return;
@@ -264,6 +271,43 @@ static void set_tokens(Memory* memory) {
         Token* token = alloc_token(memory);
         token->tag = ACCESS_FLAGS;
         token->u16 = pop_u16(memory);
+    }
+    {
+        Token* token = alloc_token(memory);
+        token->tag = THIS_CLASS;
+        token->u16 = pop_u16(memory);
+    }
+    {
+        Token* token = alloc_token(memory);
+        token->tag = SUPER_CLASS;
+        token->u16 = pop_u16(memory);
+    }
+    {
+        u16 interfaces_size = pop_u16(memory);
+        {
+            Token* token = alloc_token(memory);
+            token->tag = INTERFACES_SIZE;
+            token->u16 = interfaces_size;
+        }
+        for (u16 i = 0; i < interfaces_size; ++i) {
+            fprintf(stderr, "[ERROR] `{ u16 interface }` unimplemented\n\n");
+            fflush(stderr);
+            break;
+        }
+    }
+    {
+        u16 fields_size = pop_u16(memory);
+        {
+            Token* token = alloc_token(memory);
+            token->tag = FIELDS_SIZE;
+            token->u16 = fields_size;
+        }
+        for (u16 i = 0; i < fields_size; ++i) {
+            fprintf(stderr,
+                    "[ERROR] `{ FieldInfo field_info }` unimplemented\n\n");
+            fflush(stderr);
+            break;
+        }
     }
 }
 
@@ -393,6 +437,22 @@ static void print_tokens(Memory* memory) {
                 }
             }
             printf(" ]\n\n");
+            break;
+        }
+        case THIS_CLASS: {
+            printf("  %-18hu(u16 ThisClass)\n", token.u16);
+            break;
+        }
+        case SUPER_CLASS: {
+            printf("  %-18hu(u16 SuperClass)\n", token.u16);
+            break;
+        }
+        case INTERFACES_SIZE: {
+            printf("  %-18hu(u16 InterfacesSize)\n", token.u16);
+            break;
+        }
+        case FIELDS_SIZE: {
+            printf("  %-18hu(u16 FieldsSize)\n", token.u16);
             break;
         }
         }
