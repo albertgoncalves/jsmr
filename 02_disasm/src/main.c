@@ -63,14 +63,14 @@ typedef struct {
 } ConstantNameAndType;
 
 typedef struct {
-    ConstantTag tag;
-    u16         index;
     union {
-        ConstantUtf8 utf8;
-        ConstantClass class;
+        ConstantUtf8        utf8;
+        ConstantClass       class_;
         ConstantRef         ref;
         ConstantNameAndType name_and_type;
     };
+    u16         index;
+    ConstantTag tag;
 } Constant;
 
 typedef struct {
@@ -83,12 +83,12 @@ typedef struct {
 } Token;
 
 typedef struct {
-    usize size;
+    usize file_size;
     u8    bytes[SIZE_BYTES];
-    Token tokens[SIZE_TOKENS];
-    char  chars[SIZE_CHARS];
     usize byte_index;
+    Token tokens[SIZE_TOKENS];
     usize token_index;
+    char  chars[SIZE_CHARS];
     usize char_index;
 } Memory;
 
@@ -99,17 +99,17 @@ static void set_file_to_bytes(Memory* memory, const char* filename) {
         exit(EXIT_FAILURE);
     }
     fseek(file, 0, SEEK_END);
-    usize size = (usize)ftell(file);
+    usize file_size = (usize)ftell(file);
     rewind(file);
-    if (SIZE_BYTES < size) {
+    if (SIZE_BYTES < file_size) {
         fprintf(stderr, "[ERROR] File does not fit into memory\n");
         exit(EXIT_FAILURE);
     }
-    if (fread(&memory->bytes, sizeof(u8), size, file) != size) {
+    if (fread(&memory->bytes, sizeof(u8), file_size, file) != file_size) {
         fprintf(stderr, "[ERROR] `fread` failed\n");
         exit(EXIT_FAILURE);
     }
-    memory->size = size;
+    memory->file_size = file_size;
     fclose(file);
 }
 
@@ -120,7 +120,7 @@ static void set_file_to_bytes(Memory* memory, const char* filename) {
     }
 
 static u8 pop_u8(Memory* memory) {
-    if (memory->size <= memory->byte_index) {
+    if (memory->file_size <= memory->byte_index) {
         OUT_OF_BOUNDS;
     }
     return memory->bytes[memory->byte_index++];
@@ -128,7 +128,7 @@ static u8 pop_u8(Memory* memory) {
 
 static u16 pop_u16(Memory* memory) {
     usize next_index = memory->byte_index + 2;
-    if (memory->size < next_index) {
+    if (memory->file_size < next_index) {
         OUT_OF_BOUNDS;
     }
     usize i = memory->byte_index;
@@ -139,7 +139,7 @@ static u16 pop_u16(Memory* memory) {
 
 static u32 pop_u32(Memory* memory) {
     usize next_index = memory->byte_index + 4;
-    if (memory->size < next_index) {
+    if (memory->file_size < next_index) {
         OUT_OF_BOUNDS;
     }
     usize i = memory->byte_index;
@@ -213,7 +213,7 @@ static void set_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_CLASS: {
-                token->constant.class.name_index = pop_u16(memory);
+                token->constant.class_.name_index = pop_u16(memory);
                 break;
             }
             case CONSTANT_TAG_METHOD_REF: {
@@ -272,7 +272,7 @@ static void print_tokens(Memory* memory) {
             case CONSTANT_TAG_CLASS: {
                 printf("  %-4hhu%-10hu(u8 Constant.Class, u16 NameIndex)\n",
                        (u8)CONSTANT_TAG_METHOD_REF,
-                       token.constant.class.name_index);
+                       token.constant.class_.name_index);
                 break;
             }
             case CONSTANT_TAG_METHOD_REF: {
@@ -300,13 +300,17 @@ static void print_tokens(Memory* memory) {
 }
 
 i32 main(i32 n, const char** args) {
-    printf("sizeof(u8)     : %zu\n"
-           "sizeof(Type)   : %zu\n"
-           "sizeof(Token)  : %zu\n"
-           "sizeof(Memory) : %zu\n"
+    printf("sizeof(u8)          : %zu\n"
+           "sizeof(Tag)         : %zu\n"
+           "sizeof(ConstantTag) : %zu\n"
+           "sizeof(Constant)    : %zu\n"
+           "sizeof(Token)       : %zu\n"
+           "sizeof(Memory)      : %zu\n"
            "\n",
            sizeof(u8),
            sizeof(Tag),
+           sizeof(ConstantTag),
+           sizeof(Constant),
            sizeof(Token),
            sizeof(Memory));
     if (n < 2) {
@@ -323,7 +327,7 @@ i32 main(i32 n, const char** args) {
     print_tokens(memory);
     fprintf(stderr,
             "\n\n[INFO] %zu bytes left!\n",
-            memory->size - memory->byte_index);
+            memory->file_size - memory->byte_index);
     free(memory);
     return EXIT_SUCCESS;
 }
