@@ -21,6 +21,7 @@ typedef enum {
     MAJOR_VERSION,
     CONSTANT_POOL_SIZE,
     CONSTANT,
+    ACCESS_FLAGS,
 } Tag;
 
 typedef enum {
@@ -77,6 +78,18 @@ typedef struct {
     u16         index;
     ConstantTag tag;
 } Constant;
+
+typedef enum {
+    ACC_PUBLIC = 0x0001,
+    ACC_FINAL = 0x0010,
+    ACC_SUPER = 0x0020,
+    ACC_INTERFACE = 0x0200,
+    ACC_ABSTRACT = 0x0400,
+    ACC_SYNTHETIC = 0x1000,
+    ACC_ANNOTATION = 0x2000,
+    ACC_ENUM = 0x4000,
+    ACC_MODULE = 0x8000,
+} AccessFlag;
 
 typedef struct {
     union {
@@ -247,6 +260,11 @@ static void set_tokens(Memory* memory) {
             }
         }
     }
+    {
+        Token* token = alloc_token(memory);
+        token->tag = ACCESS_FLAGS;
+        token->u16 = pop_u16(memory);
+    }
 }
 
 static void print_tokens(Memory* memory) {
@@ -255,58 +273,127 @@ static void print_tokens(Memory* memory) {
         Token token = tokens[i];
         switch (token.tag) {
         case MAGIC: {
-            printf("  0x%-12X(u32 Magic)\n\n", token.u32);
+            printf("  0x%-16X(u32 Magic)\n\n", token.u32);
             break;
         }
         case MINOR_VERSION: {
-            printf("  %-14hu(u16 MinorVersion)\n", token.u16);
+            printf("  %-18hu(u16 MinorVersion)\n", token.u16);
             break;
         }
         case MAJOR_VERSION: {
-            printf("  %-14hu(u16 MajorVersion)\n\n", token.u16);
+            printf("  %-18hu(u16 MajorVersion)\n\n", token.u16);
             break;
         }
         case CONSTANT_POOL_SIZE: {
-            printf("  %-14hu(u16 ConstantPoolSize)\n", token.u16);
+            printf("  %-18hu(u16 ConstantPoolSize)\n\n", token.u16);
             break;
         }
         case CONSTANT: {
             switch (token.constant.tag) {
             case CONSTANT_TAG_UTF8: {
-                printf("  %-4hhu%-4hu%s\n"
-                       "                "
+                printf("  %-4hhu%-4hu\"%s\"\n"
+                       "                    [%3hu] "
                        "(u8 Constant.Utf8, u16 Length, u8*%hu String)\n",
                        (u8)token.constant.tag,
-                       token.constant.utf8.length,
+                       token.constant.utf8.size,
                        token.constant.utf8.string,
-                       token.constant.utf8.length);
+                       token.constant.index,
+                       token.constant.utf8.size);
                 break;
             }
             case CONSTANT_TAG_CLASS: {
-                printf("  %-4hhu%-10hu(u8 Constant.Class, u16 NameIndex)\n",
-                       (u8)CONSTANT_TAG_METHOD_REF,
-                       token.constant.class_.name_index);
+                printf("  %-4hhu%-14hu[%3hu] (u8 Constant.Class, "
+                       "u16 NameIndex)\n",
+                       (u8)token.constant.tag,
+                       token.constant.class_.name_index,
+                       token.constant.index);
+                break;
+            }
+            case CONSTANT_TAG_STRING: {
+                printf("  %-4hhu%-14hu[%3hu] (u8 Constant.String, "
+                       "u16 StringIndex)\n",
+                       (u8)token.constant.tag,
+                       token.constant.string.string_index,
+                       token.constant.index);
+                break;
+            }
+            case CONSTANT_TAG_FIELD_REF: {
+                printf("  %-4hhu%-4hu%-10hu[%3hu] "
+                       "(u8 Constant.FieldRef, u16 ClassIndex, "
+                       "u16 NameAndTypeIndex)\n",
+                       (u8)token.constant.tag,
+                       token.constant.ref.class_index,
+                       token.constant.ref.name_and_type_index,
+                       token.constant.index);
                 break;
             }
             case CONSTANT_TAG_METHOD_REF: {
-                printf("  %-4hhu%-4hu%-6hu"
+                printf("  %-4hhu%-4hu%-10hu[%3hu] "
                        "(u8 Constant.MethodRef, u16 ClassIndex, "
                        "u16 NameAndTypeIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.ref.class_index,
-                       token.constant.ref.name_and_type_index);
+                       token.constant.ref.name_and_type_index,
+                       token.constant.index);
                 break;
             }
             case CONSTANT_TAG_NAME_AND_TYPE: {
-                printf("  %-4hhu%-4hu%-6hu"
+                printf("  %-4hhu%-4hu%-10hu[%3hu] "
                        "(u8 Constant.NameAndType, u16 NameIndex, "
                        "u16 DescriptorIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.name_and_type.name_index,
-                       token.constant.name_and_type.descriptor_index);
+                       token.constant.name_and_type.descriptor_index,
+                       token.constant.index);
                 break;
             }
             }
+            break;
+        }
+        case ACCESS_FLAGS: {
+            printf("  0x%-16X(u16 AccessFlags) [", token.u16);
+            for (u16 j = 0; j < 16; ++j) {
+                switch ((AccessFlag)((1 << j) & token.u16)) {
+                case ACC_PUBLIC: {
+                    printf(" ACC_PUBLIC");
+                    break;
+                }
+                case ACC_FINAL: {
+                    printf(" ACC_FINAL");
+                    break;
+                }
+                case ACC_SUPER: {
+                    printf(" ACC_SUPER");
+                    break;
+                }
+                case ACC_INTERFACE: {
+                    printf(" ACC_INTERFACE");
+                    break;
+                }
+                case ACC_ABSTRACT: {
+                    printf(" ACC_ABSTRACT");
+                    break;
+                }
+                case ACC_SYNTHETIC: {
+                    printf(" ACC_SYNTHETIC");
+                    break;
+                }
+                case ACC_ANNOTATION: {
+                    printf(" ACC_ANNOTATION");
+                    break;
+                }
+                case ACC_ENUM: {
+                    printf(" ACC_ENUM");
+                    break;
+                }
+                case ACC_MODULE: {
+                    printf(" ACC_MODULE");
+                    break;
+                }
+                }
+            }
+            printf(" ]\n\n");
+            break;
         }
         }
     }
