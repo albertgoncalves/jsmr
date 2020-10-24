@@ -25,9 +25,11 @@ typedef enum {
     THIS_CLASS,
     SUPER_CLASS,
     INTERFACES_SIZE,
-    // INTERFACE_U16,
+    // INTERFACE,
     FIELDS_SIZE,
-    // FIELD_INFO,
+    // FIELD,
+    METHODS_SIZE,
+    // METHOD,
 } Tag;
 
 typedef enum {
@@ -183,6 +185,12 @@ static Token* alloc_token(Memory* memory) {
     return &memory->tokens[memory->token_index++];
 }
 
+static void push_tag_u16(Memory* memory, Tag tag, u16 value) {
+    Token* token = alloc_token(memory);
+    token->tag = tag;
+    token->u16 = value;
+}
+
 static void set_tokens(Memory* memory) {
     memory->byte_index = 0;
     memory->token_index = 0;
@@ -197,23 +205,11 @@ static void set_tokens(Memory* memory) {
         token->tag = MAGIC;
         token->u32 = magic;
     }
-    {
-        Token* token = alloc_token(memory);
-        token->tag = MINOR_VERSION;
-        token->u16 = pop_u16(memory);
-    }
-    {
-        Token* token = alloc_token(memory);
-        token->tag = MAJOR_VERSION;
-        token->u16 = pop_u16(memory);
-    }
+    push_tag_u16(memory, MINOR_VERSION, pop_u16(memory));
+    push_tag_u16(memory, MAJOR_VERSION, pop_u16(memory));
     {
         u16 constant_pool_size = pop_u16(memory);
-        {
-            Token* token = alloc_token(memory);
-            token->tag = CONSTANT_POOL_SIZE;
-            token->u16 = constant_pool_size;
-        }
+        push_tag_u16(memory, CONSTANT_POOL_SIZE, constant_pool_size);
         for (u16 i = 1; i < constant_pool_size; ++i) {
             ConstantTag tag = (ConstantTag)pop_u8(memory);
             Token*      token = alloc_token(memory);
@@ -261,51 +257,35 @@ static void set_tokens(Memory* memory) {
                         "[ERROR] `{ ConstantTag tag (%hhu) }` "
                         "unimplemented\n\n",
                         (u8)tag);
-                fflush(stderr);
                 return;
             }
             }
         }
     }
-    {
-        Token* token = alloc_token(memory);
-        token->tag = ACCESS_FLAGS;
-        token->u16 = pop_u16(memory);
-    }
-    {
-        Token* token = alloc_token(memory);
-        token->tag = THIS_CLASS;
-        token->u16 = pop_u16(memory);
-    }
-    {
-        Token* token = alloc_token(memory);
-        token->tag = SUPER_CLASS;
-        token->u16 = pop_u16(memory);
-    }
+    push_tag_u16(memory, ACCESS_FLAGS, pop_u16(memory));
+    push_tag_u16(memory, THIS_CLASS, pop_u16(memory));
+    push_tag_u16(memory, SUPER_CLASS, pop_u16(memory));
     {
         u16 interfaces_size = pop_u16(memory);
-        {
-            Token* token = alloc_token(memory);
-            token->tag = INTERFACES_SIZE;
-            token->u16 = interfaces_size;
-        }
+        push_tag_u16(memory, INTERFACES_SIZE, interfaces_size);
         for (u16 i = 0; i < interfaces_size; ++i) {
             fprintf(stderr, "[ERROR] `{ u16 interface }` unimplemented\n\n");
-            fflush(stderr);
             break;
         }
     }
     {
         u16 fields_size = pop_u16(memory);
-        {
-            Token* token = alloc_token(memory);
-            token->tag = FIELDS_SIZE;
-            token->u16 = fields_size;
-        }
+        push_tag_u16(memory, FIELDS_SIZE, fields_size);
         for (u16 i = 0; i < fields_size; ++i) {
-            fprintf(stderr,
-                    "[ERROR] `{ FieldInfo field_info }` unimplemented\n\n");
-            fflush(stderr);
+            fprintf(stderr, "[ERROR] `{ ? field }` unimplemented\n\n");
+            break;
+        }
+    }
+    {
+        u16 methods_size = pop_u16(memory);
+        push_tag_u16(memory, METHODS_SIZE, methods_size);
+        for (u16 i = 0; i < methods_size; ++i) {
+            fprintf(stderr, "[ERROR] `{ ? method }` unimplemented\n\n");
             break;
         }
     }
@@ -455,6 +435,10 @@ static void print_tokens(Memory* memory) {
             printf("  %-18hu(u16 FieldsSize)\n", token.u16);
             break;
         }
+        case METHODS_SIZE: {
+            printf("  %-18hu(u16 MethodsSize)\n", token.u16);
+            break;
+        }
         }
     }
 }
@@ -489,6 +473,7 @@ i32 main(i32 n, const char** args) {
     fprintf(stderr,
             "\n[INFO] %zu bytes left!\n",
             memory->file_size - memory->byte_index);
+    fflush(stderr);
     free(memory);
     return EXIT_SUCCESS;
 }
