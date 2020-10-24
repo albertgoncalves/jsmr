@@ -2,6 +2,44 @@
 
 set -euo pipefail
 
+flags=(
+    "-fshort-enums"
+    "-fsingle-precision-constant"
+    "-march=native"
+    "-O1"
+    "-Wall"
+    "-Wcast-align"
+    "-Wcast-align=strict"
+    "-Wcast-qual"
+    "-Wconversion"
+    "-Wdate-time"
+    "-Wdouble-promotion"
+    "-Wduplicated-branches"
+    "-Wduplicated-cond"
+    "-Werror"
+    "-Wextra"
+    "-Wfatal-errors"
+    "-Wfloat-equal"
+    "-Wformat=2"
+    "-Wformat-signedness"
+    "-Winline"
+    "-Wlogical-op"
+    "-Wmissing-declarations"
+    "-Wmissing-include-dirs"
+    "-Wnull-dereference"
+    "-Wpacked"
+    "-Wpedantic"
+    "-Wpointer-arith"
+    "-Wredundant-decls"
+    "-Wshadow"
+    "-Wstack-protector"
+    "-Wswitch-enum"
+    "-Wtrampolines"
+    "-Wundef"
+    "-Wunused"
+    "-Wunused-macros"
+    "-Wwrite-strings"
+)
 wd="$WD/02_disasm"
 
 cppcheck \
@@ -12,7 +50,7 @@ cppcheck \
 clang-format -i -verbose "$wd/src"/* 2>&1 | sed 's/\/.*\///g'
 
 start=$(now)
-gcc -g -o "$wd/bin/main" "${C_FLAGS[@]}" "$wd/src/main.c"
+gcc -g -o "$wd/bin/main" "${flags[@]}" "$wd/src/main.c"
 javac -d "$wd/out" "$wd/src/Main.java"
 end=$(now)
 python3 -c "print(\"Compiled! ({:.3f}s)\n\".format(${end} - ${start}))"
