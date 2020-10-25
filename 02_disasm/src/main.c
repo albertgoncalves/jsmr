@@ -172,33 +172,33 @@ static void set_tokens(Memory* memory) {
                 }
                 prev_attribute = attribute;
             }
-            break;
         }
     }
 }
 
 void print_attribute(Attribute*);
 void print_attribute(Attribute* attribute) {
-    printf("  %-4hu%-14u(u16 AttributeNameIndex, u32 AttributeSize)\n",
+    printf("\n  %-4hu%-14u(u16 AttributeNameIndex, u32 AttributeSize)",
            attribute->name_index,
            attribute->size);
     switch (attribute->tag) {
     case ATTRIB_CODE: {
+        printf(" [ CodeAttribute ]\n");
         printf("  %-4hu%-4hu%-10u"
                "(u16 CodeMaxStack, u16 CodeMaxLocals, u32 CodeBytesCount)\n",
                attribute->code.max_stack,
                attribute->code.max_locals,
                attribute->code.bytes_count);
         printf("  {\n");
-        for (u32 k = 0; k < attribute->code.bytes_count;) {
-            OpCode op_code = attribute->code.bytes[k++];
+        for (u32 i = 0; i < attribute->code.bytes_count;) {
+            OpCode op_code = attribute->code.bytes[i++];
             switch (op_code) {
             case OP_ALOAD_0: {
                 printf("    aload_0\n");
                 break;
             case OP_INVOKESPECIAL: {
-                u8  byte1 = attribute->code.bytes[k++];
-                u8  byte2 = attribute->code.bytes[k++];
+                u8  byte1 = attribute->code.bytes[i++];
+                u8  byte2 = attribute->code.bytes[i++];
                 u16 index = (u16)((byte1 << 8) | byte2);
                 printf("    invokespecial #%hu\n", index);
                 break;
@@ -258,7 +258,7 @@ static void print_tokens(Memory* memory) {
             switch (token.constant.tag) {
             case CONSTANT_TAG_UTF8: {
                 printf("  %-4hhu%-4hu\"%s\"\n"
-                       "                    [%3hu] "
+                       "                    #%-3hu "
                        "(u8 Constant.Utf8, u16 Length, u8*%hu String)\n",
                        (u8)token.constant.tag,
                        token.constant.utf8.size,
@@ -268,7 +268,7 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_CLASS: {
-                printf("  %-4hhu%-14hu[%3hu] (u8 Constant.Class, "
+                printf("  %-4hhu%-14hu#%-3hu (u8 Constant.Class, "
                        "u16 NameIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.class_.name_index,
@@ -276,7 +276,7 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_STRING: {
-                printf("  %-4hhu%-14hu[%3hu] (u8 Constant.String, "
+                printf("  %-4hhu%-14hu#%-3hu (u8 Constant.String, "
                        "u16 StringIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.string.string_index,
@@ -284,7 +284,7 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_FIELD_REF: {
-                printf("  %-4hhu%-4hu%-10hu[%3hu] "
+                printf("  %-4hhu%-4hu%-10hu#%-3hu "
                        "(u8 Constant.FieldRef, u16 ClassIndex, "
                        "u16 NameAndTypeIndex)\n",
                        (u8)token.constant.tag,
@@ -294,7 +294,7 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_METHOD_REF: {
-                printf("  %-4hhu%-4hu%-10hu[%3hu] "
+                printf("  %-4hhu%-4hu%-10hu#%-3hu "
                        "(u8 Constant.MethodRef, u16 ClassIndex, "
                        "u16 NameAndTypeIndex)\n",
                        (u8)token.constant.tag,
@@ -304,7 +304,7 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_NAME_AND_TYPE: {
-                printf("  %-4hhu%-4hu%-10hu[%3hu] "
+                printf("  %-4hhu%-4hu%-10hu#%-3hu "
                        "(u8 Constant.NameAndType, u16 NameIndex, "
                        "u16 DescriptorIndex)\n",
                        (u8)token.constant.tag,
@@ -404,21 +404,15 @@ static void print_tokens(Memory* memory) {
 }
 
 i32 main(i32 n, const char** args) {
-    printf("sizeof(u8)           : %zu\n"
-           "sizeof(Tag)          : %zu\n"
-           "sizeof(ConstantTag)  : %zu\n"
-           "sizeof(Constant)     : %zu\n"
-           "sizeof(CodeAttribute): %zu\n"
-           "sizeof(Attribute)    : %zu\n"
-           "sizeof(Method)       : %zu\n"
-           "sizeof(Token)        : %zu\n"
-           "sizeof(Memory)       : %zu\n"
+    printf("sizeof(Constant)    : %zu\n"
+           "sizeof(Code)        : %zu\n"
+           "sizeof(Attribute)   : %zu\n"
+           "sizeof(Method)      : %zu\n"
+           "sizeof(Token)       : %zu\n"
+           "sizeof(Memory)      : %zu\n"
            "\n",
-           sizeof(u8),
-           sizeof(Tag),
-           sizeof(ConstantTag),
            sizeof(Constant),
-           sizeof(CodeAttribute),
+           sizeof(Code),
            sizeof(Attribute),
            sizeof(Method),
            sizeof(Token),

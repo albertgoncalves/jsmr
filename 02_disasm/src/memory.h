@@ -128,7 +128,7 @@ typedef struct {
     u16        exception_table_count;
     u16        attributes_count;
     Attribute* attributes;
-} CodeAttribute;
+} Code;
 
 typedef enum {
     OP_ALOAD_0 = 42,
@@ -141,7 +141,7 @@ struct Attribute {
     u16        name_index;
     u32        size;
     union {
-        CodeAttribute code;
+        Code                code;
     };
     AttributeTag tag;
 };
