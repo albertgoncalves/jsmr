@@ -1,11 +1,12 @@
 #ifndef __MEMORY_H__
 #define __MEMORY_H__
 
-#define SIZE_BYTES   1024
-#define SIZE_TOKENS  128
-#define SIZE_CHARS   512
-#define SIZE_UTF8S   48
-#define SIZE_ATTRIBS 128
+#define SIZE_BYTES              1024
+#define SIZE_TOKENS             128
+#define SIZE_CHARS              512
+#define SIZE_UTF8S              48
+#define SIZE_ATTRIBS            128
+#define SIZE_LINE_NUMBER_TABLES 32
 
 typedef enum {
     MAGIC,
@@ -108,6 +109,7 @@ typedef enum {
 
 typedef enum {
     ATTRIB_CODE,
+    ATTRIB_LINE_NUMBER_TABLE,
 } AttributeTag;
 
 // typedef struct {
@@ -136,12 +138,23 @@ typedef enum {
     OP_RETURN = 177,
 } OpCode;
 
+typedef struct {
+    u16 pc_start;
+    u16 line_number;
+} LineNumberTable;
+
+typedef struct {
+    u16              table_count;
+    LineNumberTable* tables;
+} LineNumberTableInfo;
+
 struct Attribute {
     Attribute* next_attribute;
     u16        name_index;
     u32        size;
     union {
         Code                code;
+        LineNumberTableInfo line_number_table_info;
     };
     AttributeTag tag;
 };
@@ -165,16 +178,18 @@ typedef struct {
 } Token;
 
 typedef struct {
-    usize     file_size;
-    u8        bytes[SIZE_BYTES];
-    usize     byte_index;
-    Token     tokens[SIZE_TOKENS];
-    usize     token_index;
-    char      chars[SIZE_CHARS];
-    char*     utf8s_by_index[SIZE_UTF8S];
-    usize     char_index;
-    Attribute attributes[SIZE_ATTRIBS];
-    usize     attribute_index;
+    usize           file_size;
+    u8              bytes[SIZE_BYTES];
+    usize           byte_index;
+    Token           tokens[SIZE_TOKENS];
+    usize           token_index;
+    char            chars[SIZE_CHARS];
+    char*           utf8s_by_index[SIZE_UTF8S];
+    usize           char_index;
+    Attribute       attributes[SIZE_ATTRIBS];
+    usize           attribute_index;
+    LineNumberTable line_number_tables[SIZE_LINE_NUMBER_TABLES];
+    usize           line_number_table_index;
 } Memory;
 
 static void set_file_to_bytes(Memory* memory, const char* filename) {
@@ -257,6 +272,14 @@ static Attribute* alloc_attribute(Memory* memory) {
     Attribute* attribute = &memory->attributes[memory->attribute_index++];
     attribute->next_attribute = NULL;
     return attribute;
+}
+
+static LineNumberTable* alloc_line_number_table(Memory* memory) {
+    if (SIZE_LINE_NUMBER_TABLES <= memory->line_number_table_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new line number table\n");
+        exit(EXIT_FAILURE);
+    }
+    return &memory->line_number_tables[memory->line_number_table_index++];
 }
 
 static void push_tag_u16(Memory* memory, Tag tag, u16 value) {

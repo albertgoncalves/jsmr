@@ -41,12 +41,25 @@ Attribute* get_attribute(Memory* memory) {
             }
             code_prev_attribute = code_attribute;
         }
+    } else if (!strcmp(attribute_name, "LineNumberTable")) {
+        attribute->tag = ATTRIB_LINE_NUMBER_TABLE;
+        u16 table_count = pop_u16(memory);
+        attribute->line_number_table_info.table_count = table_count;
+        for (u16 i = 0; i < table_count; ++i) {
+            LineNumberTable* line_number_table =
+                alloc_line_number_table(memory);
+            if (i == 0) {
+                attribute->line_number_table_info.tables = line_number_table;
+            }
+            line_number_table->pc_start = pop_u16(memory);
+            line_number_table->line_number = pop_u16(memory);
+        }
     } else {
         fprintf(stderr,
                 "[DEBUG] %hu\n[DEBUG] %s\n",
                 attribute_name_index,
                 attribute_name);
-        fprintf(stderr, "[ERROR] `{ ? method }` unimplemented\n\n");
+        fprintf(stderr, "[ERROR] `{ ? attribute }` unimplemented\n\n");
         exit(EXIT_FAILURE);
     }
     return attribute;
@@ -223,12 +236,28 @@ void print_attribute(Attribute* attribute) {
         printf("  %-18hu(u16 CodeAttributesCount)\n",
                attribute->code.attributes_count);
         Attribute* code_attribute = attribute->code.attributes;
-        for (u16 k = 0; k < attribute->code.attributes_count; ++k) {
+        for (u16 _ = 0; _ < attribute->code.attributes_count; ++_) {
             if (code_attribute != NULL) {
                 print_attribute(code_attribute);
                 code_attribute = code_attribute->next_attribute;
             }
         }
+        break;
+    }
+    case ATTRIB_LINE_NUMBER_TABLE: {
+        printf(" [ LineNumberTableAttribute ]\n");
+        u16 line_number_table_count =
+            attribute->line_number_table_info.table_count;
+        printf("  %-18hu(u16 LineNumberTableCount)\n",
+               line_number_table_count);
+        for (u16 i = 0; i < line_number_table_count; ++i) {
+            LineNumberTable table =
+                attribute->line_number_table_info.tables[i];
+            printf("  %-4hu%-14hu(u16 PcStart, u16 LineNumber)\n",
+                   table.pc_start,
+                   table.line_number);
+        }
+        break;
     }
     }
 }
