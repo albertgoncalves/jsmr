@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef FILE File;
 
@@ -11,9 +12,11 @@ typedef size_t   usize;
 
 typedef int32_t i32;
 
-#define SIZE_BYTES  1024
-#define SIZE_TOKENS 128
-#define SIZE_CHARS  512
+#define SIZE_BYTES   1024
+#define SIZE_TOKENS  128
+#define SIZE_CHARS   512
+#define SIZE_UTF8S   48
+#define SIZE_ATTRIBS 128
 
 typedef enum {
     MAGIC,
@@ -29,7 +32,7 @@ typedef enum {
     FIELDS_SIZE,
     // FIELD,
     METHODS_SIZE,
-    // METHOD,
+    METHOD,
 } Tag;
 
 typedef enum {
@@ -99,23 +102,89 @@ typedef enum {
     ACC_MODULE = 0x8000,
 } AccessFlag;
 
+typedef enum {
+    METHOD_ACC_PUBLIC = 0x0001,
+    METHOD_ACC_PRIVATE = 0x0002,
+    METHOD_ACC_PROTECTED = 0x0004,
+    METHOD_ACC_STATIC = 0x0008,
+    METHOD_ACC_FINAL = 0x0010,
+    METHOD_ACC_SYNCHRONIZED = 0x0020,
+    METHOD_ACC_BRIDGE = 0x0040,
+    METHOD_ACC_VARARGS = 0x0080,
+    METHOD_ACC_NATIVE = 0x0100,
+    METHOD_ACC_ABSTRACT = 0x0400,
+    METHOD_ACC_STRICT = 0x0800,
+    METHOD_ACC_SYNTHETIC = 0x1000,
+} MethodAccessFlag;
+
+typedef enum {
+    ATTRIB_CODE,
+} AttributeTag;
+
+// typedef struct {
+//     u16 pc_start;
+//     u16 pc_end;
+//     u16 pc_handler;
+//     u16 catch_type;
+// } ExceptionTable;
+
+typedef struct Attribute Attribute;
+
+typedef struct {
+    u16 max_stack;
+    u16 max_locals;
+    u32 bytes_size;
+    u8* bytes;
+    // u16             exception_table_size;
+    // ExceptionTable* exception_table;
+    // u16             attributes_size;
+    // Attribute*      attributes;
+} CodeAttribute;
+
+typedef enum {
+    OP_ALOAD_0 = 42,
+    OP_INVOKESPECIAL = 183,
+    OP_RETURN = 177,
+} OpCode;
+
+struct Attribute {
+    u16 name_index;
+    u32 size;
+    union {
+        CodeAttribute code;
+    };
+    AttributeTag tag;
+};
+
+typedef struct {
+    u16        access_flags;
+    u16        name_index;
+    u16        descriptor_index;
+    u16        attributes_size;
+    Attribute* attributes;
+} Method;
+
 typedef struct {
     union {
         u32      u32;
         u16      u16;
         Constant constant;
+        Method   method;
     };
     Tag tag;
 } Token;
 
 typedef struct {
-    usize file_size;
-    u8    bytes[SIZE_BYTES];
-    usize byte_index;
-    Token tokens[SIZE_TOKENS];
-    usize token_index;
-    char  chars[SIZE_CHARS];
-    usize char_index;
+    usize     file_size;
+    u8        bytes[SIZE_BYTES];
+    usize     byte_index;
+    Token     tokens[SIZE_TOKENS];
+    usize     token_index;
+    char      chars[SIZE_CHARS];
+    char*     utf8s[SIZE_UTF8S];
+    usize     char_index;
+    Attribute attributes[SIZE_ATTRIBS];
+    usize     attribute_index;
 } Memory;
 
 static void set_file_to_bytes(Memory* memory, const char* filename) {
@@ -175,14 +244,20 @@ static u32 pop_u32(Memory* memory) {
     return bytes;
 }
 
-#undef OUT_OF_BOUNDS
-
 static Token* alloc_token(Memory* memory) {
-    if (SIZE_TOKENS < memory->token_index) {
+    if (SIZE_TOKENS <= memory->token_index) {
         fprintf(stderr, "[ERROR] Unable to allocate new token\n");
         exit(EXIT_FAILURE);
     }
     return &memory->tokens[memory->token_index++];
+}
+
+static Attribute* alloc_attribute(Memory* memory) {
+    if (SIZE_ATTRIBS <= memory->attribute_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new attribute\n");
+        exit(EXIT_FAILURE);
+    }
+    return &memory->attributes[memory->attribute_index++];
 }
 
 static void push_tag_u16(Memory* memory, Tag tag, u16 value) {
@@ -195,6 +270,7 @@ static void set_tokens(Memory* memory) {
     memory->byte_index = 0;
     memory->token_index = 0;
     memory->char_index = 0;
+    memory->attribute_index = 0;
     {
         u32 magic = pop_u32(memory);
         if (magic != 0xCAFEBABE) {
@@ -219,13 +295,19 @@ static void set_tokens(Memory* memory) {
             switch (tag) {
             case CONSTANT_TAG_UTF8: {
                 u16 utf8_size = pop_u16(memory);
-                if (SIZE_CHARS < (memory->char_index + utf8_size + 1)) {
+                if (SIZE_CHARS <= (memory->char_index + utf8_size + 1)) {
                     fprintf(stderr, "[ERROR] Unable to allocate string\n");
                     exit(EXIT_FAILURE);
                 }
+                if (SIZE_UTF8S <= i) {
+                    fprintf(stderr,
+                            "[ERROR] Unable to allocate UTF8 pointer\n");
+                    exit(EXIT_FAILURE);
+                }
                 token->constant.utf8.size = utf8_size;
-                token->constant.utf8.string =
-                    &memory->chars[memory->char_index];
+                char* utf8 = &memory->chars[memory->char_index];
+                token->constant.utf8.string = utf8;
+                memory->utf8s[i] = utf8;
                 for (u16 j = 0; j < utf8_size; ++j) {
                     memory->chars[memory->char_index++] = (char)pop_u8(memory);
                 }
@@ -285,7 +367,43 @@ static void set_tokens(Memory* memory) {
         u16 methods_size = pop_u16(memory);
         push_tag_u16(memory, METHODS_SIZE, methods_size);
         for (u16 i = 0; i < methods_size; ++i) {
-            fprintf(stderr, "[ERROR] `{ ? method }` unimplemented\n\n");
+            Token* token = alloc_token(memory);
+            token->tag = METHOD;
+            token->method.access_flags = pop_u16(memory);
+            token->method.name_index = pop_u16(memory);
+            token->method.descriptor_index = pop_u16(memory);
+            u16 attributes_size = pop_u16(memory);
+            token->method.attributes_size = attributes_size;
+            for (u16 j = 0; j < attributes_size; ++j) {
+                Attribute* attribute = alloc_attribute(memory);
+                if (j == 0) {
+                    token->method.attributes = attribute;
+                }
+                u16 attribute_name_index = pop_u16(memory);
+                u32 attribute_size = pop_u32(memory);
+                attribute->name_index = attribute_name_index;
+                attribute->size = attribute_size;
+                const char* attribute_name =
+                    memory->utf8s[attribute_name_index];
+                if (!strcmp(attribute_name, "Code")) {
+                    attribute->tag = ATTRIB_CODE;
+                    attribute->code.max_stack = pop_u16(memory);
+                    attribute->code.max_locals = pop_u16(memory);
+                    attribute->code.bytes_size = pop_u32(memory);
+                    if (memory->file_size <= memory->byte_index) {
+                        OUT_OF_BOUNDS;
+                    }
+                    attribute->code.bytes =
+                        &memory->bytes[memory->byte_index++];
+                } else {
+                    fprintf(stderr,
+                            "[DEBUG] %hu\n[DEBUG] %s\n",
+                            attribute_name_index,
+                            attribute_name);
+                    fprintf(stderr,
+                            "[ERROR] `{ ? method }` unimplemented\n\n");
+                }
+            }
             break;
         }
     }
@@ -439,6 +557,64 @@ static void print_tokens(Memory* memory) {
             printf("  %-18hu(u16 MethodsSize)\n", token.u16);
             break;
         }
+        case METHOD: {
+            printf("  %-4hu%-4hu%-4hu%-6hu"
+                   "(u16 MethodAccessFlags, u16 MethodNameIndex, "
+                   "u16 MethodDescriptorIndex, u16 MethodAttributesSize)"
+                   "\n",
+                   token.method.access_flags,
+                   token.method.name_index,
+                   token.method.descriptor_index,
+                   token.method.attributes_size);
+            for (u16 j = 0; j < token.method.attributes_size; ++j) {
+                Attribute attribute = token.method.attributes[j];
+                printf("  %-4hu%-14u"
+                       "(u16 MethodAttributeNameIndex, "
+                       "u32 MethodAttributeSize)\n",
+                       attribute.name_index,
+                       attribute.size);
+                switch (attribute.tag) {
+                case ATTRIB_CODE: {
+                    printf("  %-4hu%-4hu%-10u"
+                           "(u16 CodeMaxStack, u16 CodeMaxLocals, "
+                           "u32 CodeBytesSize)\n",
+                           attribute.code.max_stack,
+                           attribute.code.max_locals,
+                           attribute.code.bytes_size);
+                    printf("  {\n");
+                    for (u32 k = 0; k < attribute.code.bytes_size;) {
+                        OpCode op_code = attribute.code.bytes[k++];
+                        switch (op_code) {
+                        case OP_ALOAD_0: {
+                            printf("    aload_0\n");
+                            break;
+                        case OP_INVOKESPECIAL: {
+                            u8 byte1 = attribute.code.bytes[k++];
+                            u8 byte2 = attribute.code.bytes[k++];
+                            u16 index = (u16)((byte1 << 8) | byte2);
+                            printf("    invokespecial %hu\n", index);
+                            break;
+                        }
+                        case OP_RETURN: {
+                            printf("    return\n");
+                            break;
+                        }
+                        }
+                        default: {
+                            fprintf(stderr,
+                                    "[ERROR] `{ OpCode op_code (%hhu) }` "
+                                    "unimplemented\n\n",
+                                    (u8)op_code);
+                            exit(EXIT_FAILURE);
+                        }
+                        }
+                    }
+                    printf("  }\n");
+                }
+                }
+            }
+            break;
+        }
         }
     }
 }
@@ -468,12 +644,12 @@ i32 main(i32 n, const char** args) {
     }
     set_file_to_bytes(memory, args[1]);
     set_tokens(memory);
+    fflush(stderr);
     print_tokens(memory);
     fflush(stdout);
     fprintf(stderr,
             "\n[INFO] %zu bytes left!\n",
             memory->file_size - memory->byte_index);
-    fflush(stderr);
     free(memory);
     return EXIT_SUCCESS;
 }
