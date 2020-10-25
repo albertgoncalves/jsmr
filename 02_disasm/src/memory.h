@@ -1,12 +1,13 @@
 #ifndef __MEMORY_H__
 #define __MEMORY_H__
 
-#define SIZE_BYTES              1024
-#define SIZE_TOKENS             128
-#define SIZE_CHARS              512
-#define SIZE_UTF8S              48
-#define SIZE_ATTRIBS            128
-#define SIZE_LINE_NUMBER_TABLES 32
+#define COUNT_BYTES               1024
+#define COUNT_TOKENS              128
+#define COUNT_CHARS               512
+#define COUNT_UTF8S               48
+#define COUNT_ATTRIBS             128
+#define COUNT_LINE_NUMBER_ENTRIES 32
+#define COUNT_STACK_MAP_ENTRIES   32
 
 typedef enum {
     MAGIC,
@@ -110,6 +111,7 @@ typedef enum {
 typedef enum {
     ATTRIB_CODE,
     ATTRIB_LINE_NUMBER_TABLE,
+    ATTRIB_STACK_MAP_TABLE,
 } AttributeTag;
 
 // typedef struct {
@@ -141,20 +143,66 @@ typedef enum {
 typedef struct {
     u16 pc_start;
     u16 line_number;
-} LineNumberTable;
+} LineNumberEntry;
 
 typedef struct {
-    u16              table_count;
-    LineNumberTable* tables;
-} LineNumberTableInfo;
+    u16              count;
+    LineNumberEntry* entries;
+} LineNumberTable;
+
+typedef enum {
+    VERI_TOP = 0,
+    VERI_INTEGER = 1,
+    VERI_FLOAT = 2,
+    VERI_DOUBLE = 3,
+    VERI_LONG = 4,
+    VERI_NULL = 5,
+    VERI_UNINIT_THIS = 6,
+    VERI_OBJECT = 7,
+    VERI_UNINIT = 8,
+} VerificationTypeTag;
+
+typedef struct {
+    u8 bit_tag;
+    union {
+        u16 constant_pool_index;
+        u16 offset;
+    } VerificationTypeTag;
+} VerificationType;
+
+typedef enum {
+    STACK_MAP_SAME_FRAME,
+    STACK_MAP_SAME_LOCALS_1_STACK_ITEM_FRAME,
+    STACK_MAP_SAME_LOCALS_1_STACK_ITEM_FRAME_EXTENDED,
+    STACK_MAP_CHOP_FRAME,
+    STACK_MAP_SAME_FRAME_EXTENDED,
+    STACK_MAP_APPEND_FRAME,
+    STACK_MAP_FULL_FRAME,
+} StackMapTag;
+
+typedef struct {
+    u8                bit_tag;
+    u16               offset_delta;
+    u16               local_item_count;
+    VerificationType* local_items;
+    u16               stack_item_count;
+    VerificationType* stack_items;
+    StackMapTag       tag;
+} StackMapEntry;
+
+typedef struct {
+    u16            count;
+    StackMapEntry* entries;
+} StackMapTable;
 
 struct Attribute {
     Attribute* next_attribute;
     u16        name_index;
     u32        size;
     union {
-        Code                code;
-        LineNumberTableInfo line_number_table_info;
+        Code            code;
+        LineNumberTable line_number_table;
+        StackMapTable   stack_map_table;
     };
     AttributeTag tag;
 };
@@ -179,17 +227,19 @@ typedef struct {
 
 typedef struct {
     usize           file_size;
-    u8              bytes[SIZE_BYTES];
+    u8              bytes[COUNT_BYTES];
     usize           byte_index;
-    Token           tokens[SIZE_TOKENS];
+    Token           tokens[COUNT_TOKENS];
     usize           token_index;
-    char            chars[SIZE_CHARS];
-    char*           utf8s_by_index[SIZE_UTF8S];
+    char            chars[COUNT_CHARS];
+    char*           utf8s_by_index[COUNT_UTF8S];
     usize           char_index;
-    Attribute       attributes[SIZE_ATTRIBS];
+    Attribute       attributes[COUNT_ATTRIBS];
     usize           attribute_index;
-    LineNumberTable line_number_tables[SIZE_LINE_NUMBER_TABLES];
-    usize           line_number_table_index;
+    LineNumberEntry line_number_entries[COUNT_LINE_NUMBER_ENTRIES];
+    usize           line_number_entry_index;
+    StackMapEntry   stack_map_entries[COUNT_STACK_MAP_ENTRIES];
+    usize           stack_map_entry_index;
 } Memory;
 
 static void set_file_to_bytes(Memory* memory, const char* filename) {
@@ -201,7 +251,7 @@ static void set_file_to_bytes(Memory* memory, const char* filename) {
     fseek(file, 0, SEEK_END);
     usize file_size = (usize)ftell(file);
     rewind(file);
-    if (SIZE_BYTES < file_size) {
+    if (COUNT_BYTES < file_size) {
         fprintf(stderr, "[ERROR] File does not fit into memory\n");
         exit(EXIT_FAILURE);
     }
@@ -257,7 +307,7 @@ static u32 pop_u32(Memory* memory) {
 }
 
 static Token* alloc_token(Memory* memory) {
-    if (SIZE_TOKENS <= memory->token_index) {
+    if (COUNT_TOKENS <= memory->token_index) {
         fprintf(stderr, "[ERROR] Unable to allocate new token\n");
         exit(EXIT_FAILURE);
     }
@@ -265,7 +315,7 @@ static Token* alloc_token(Memory* memory) {
 }
 
 static Attribute* alloc_attribute(Memory* memory) {
-    if (SIZE_ATTRIBS <= memory->attribute_index) {
+    if (COUNT_ATTRIBS <= memory->attribute_index) {
         fprintf(stderr, "[ERROR] Unable to allocate new attribute\n");
         exit(EXIT_FAILURE);
     }
@@ -274,12 +324,20 @@ static Attribute* alloc_attribute(Memory* memory) {
     return attribute;
 }
 
-static LineNumberTable* alloc_line_number_table(Memory* memory) {
-    if (SIZE_LINE_NUMBER_TABLES <= memory->line_number_table_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new line number table\n");
+static LineNumberEntry* alloc_line_number_entry(Memory* memory) {
+    if (COUNT_LINE_NUMBER_ENTRIES <= memory->line_number_entry_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new line number entry\n");
         exit(EXIT_FAILURE);
     }
-    return &memory->line_number_tables[memory->line_number_table_index++];
+    return &memory->line_number_entries[memory->line_number_entry_index++];
+}
+
+static StackMapEntry* alloc_stack_map_entry(Memory* memory) {
+    if (COUNT_STACK_MAP_ENTRIES <= memory->stack_map_entry_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new stack map entry\n");
+        exit(EXIT_FAILURE);
+    }
+    return &memory->stack_map_entries[memory->stack_map_entry_index++];
 }
 
 static void push_tag_u16(Memory* memory, Tag tag, u16 value) {

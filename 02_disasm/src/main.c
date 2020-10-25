@@ -26,6 +26,7 @@ Attribute* get_attribute(Memory* memory) {
         if (exception_table_count != 0) {
             fprintf(stderr,
                     "[ERROR] `{ ? exception_table }` unimplemented\n\n");
+            exit(EXIT_FAILURE);
         }
         u16 attributes_count = pop_u16(memory);
         attribute->code.attributes_count = attributes_count;
@@ -43,17 +44,29 @@ Attribute* get_attribute(Memory* memory) {
         }
     } else if (!strcmp(attribute_name, "LineNumberTable")) {
         attribute->tag = ATTRIB_LINE_NUMBER_TABLE;
-        u16 table_count = pop_u16(memory);
-        attribute->line_number_table_info.table_count = table_count;
-        for (u16 i = 0; i < table_count; ++i) {
-            LineNumberTable* line_number_table =
-                alloc_line_number_table(memory);
+        u16 line_number_table_count = pop_u16(memory);
+        attribute->line_number_table.count = line_number_table_count;
+        for (u16 i = 0; i < line_number_table_count; ++i) {
+            LineNumberEntry* line_number_entry =
+                alloc_line_number_entry(memory);
             if (i == 0) {
-                attribute->line_number_table_info.tables = line_number_table;
+                attribute->line_number_table.entries = line_number_entry;
             }
-            line_number_table->pc_start = pop_u16(memory);
-            line_number_table->line_number = pop_u16(memory);
+            line_number_entry->pc_start = pop_u16(memory);
+            line_number_entry->line_number = pop_u16(memory);
         }
+    } else if (!strcmp(attribute_name, "StackMapTable")) {
+        attribute->tag = ATTRIB_STACK_MAP_TABLE;
+        u16 stack_map_table_count = pop_u16(memory);
+        attribute->stack_map_table.count = stack_map_table_count;
+        for (u16 i = 0; i < stack_map_table_count; ++i) {
+            StackMapEntry* stack_map_entry = alloc_stack_map_entry(memory);
+            if (i == 0) {
+                attribute->stack_map_table.entries = stack_map_entry;
+            }
+        }
+        printf("[IMPL] StackMapTable implementation not finished!\n");
+        exit(EXIT_FAILURE);
     } else {
         fprintf(stderr,
                 "[DEBUG] %hu\n[DEBUG] %s\n",
@@ -74,7 +87,7 @@ static void set_tokens(Memory* memory) {
         u32 magic = pop_u32(memory);
         if (magic != 0xCAFEBABE) {
             fprintf(stderr, "[ERROR] Incorrect magic constant\n");
-            exit(EXIT_FAILURE);
+            return;
         }
         Token* token = alloc_token(memory);
         token->tag = MAGIC;
@@ -94,11 +107,11 @@ static void set_tokens(Memory* memory) {
             switch (tag) {
             case CONSTANT_TAG_UTF8: {
                 u16 utf8_size = pop_u16(memory);
-                if (SIZE_CHARS <= (memory->char_index + utf8_size + 1)) {
+                if (COUNT_CHARS <= (memory->char_index + utf8_size + 1)) {
                     fprintf(stderr, "[ERROR] Unable to allocate string\n");
                     exit(EXIT_FAILURE);
                 }
-                if (SIZE_UTF8S <= i) {
+                if (COUNT_UTF8S <= i) {
                     fprintf(stderr,
                             "[ERROR] Unable to allocate UTF8 pointer\n");
                     exit(EXIT_FAILURE);
@@ -151,7 +164,7 @@ static void set_tokens(Memory* memory) {
         push_tag_u16(memory, INTERFACES_COUNT, interfaces_count);
         for (u16 i = 0; i < interfaces_count; ++i) {
             fprintf(stderr, "[ERROR] `{ u16 interface }` unimplemented\n\n");
-            break;
+            return;
         }
     }
     {
@@ -159,7 +172,7 @@ static void set_tokens(Memory* memory) {
         push_tag_u16(memory, FIELDS_COUNT, fields_count);
         for (u16 i = 0; i < fields_count; ++i) {
             fprintf(stderr, "[ERROR] `{ ? field }` unimplemented\n\n");
-            break;
+            return;
         }
     }
     {
@@ -246,18 +259,22 @@ void print_attribute(Attribute* attribute) {
     }
     case ATTRIB_LINE_NUMBER_TABLE: {
         printf(" [ LineNumberTableAttribute ]\n");
-        u16 line_number_table_count =
-            attribute->line_number_table_info.table_count;
+        u16 line_number_table_count = attribute->line_number_table.count;
         printf("  %-18hu(u16 LineNumberTableCount)\n",
                line_number_table_count);
         for (u16 i = 0; i < line_number_table_count; ++i) {
-            LineNumberTable table =
-                attribute->line_number_table_info.tables[i];
+            LineNumberEntry line_number_entry =
+                attribute->line_number_table.entries[i];
             printf("  %-4hu%-14hu(u16 PcStart, u16 LineNumber)\n",
-                   table.pc_start,
-                   table.line_number);
+                   line_number_entry.pc_start,
+                   line_number_entry.line_number);
         }
         break;
+    }
+    case ATTRIB_STACK_MAP_TABLE: {
+        printf(" [ StackMapTableAttribute ]\n");
+        fprintf(stderr, "[ERROR] StackMapTableAttribute not printable\n");
+        exit(EXIT_FAILURE);
     }
     }
 }
