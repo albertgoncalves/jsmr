@@ -2,6 +2,32 @@
 
 #include "memory.h"
 
+static VerificationType* get_verification_type(Memory* memory) {
+    VerificationType*   verification_type = alloc_verification_type(memory);
+    u8                  bit_tag = pop_u8(memory);
+    VerificationTypeTag tag = (VerificationTypeTag)bit_tag;
+    switch (tag) {
+    case VERI_TOP:
+    case VERI_INTEGER:
+    case VERI_FLOAT:
+    case VERI_DOUBLE:
+    case VERI_LONG:
+    case VERI_NULL:
+    case VERI_UNINIT_THIS: {
+        break;
+    }
+    case VERI_OBJECT: {
+        verification_type->constant_pool_index = pop_u16(memory);
+        break;
+    }
+    case VERI_UNINIT: {
+        verification_type->offset = pop_u16(memory);
+        break;
+    }
+    }
+    return verification_type;
+}
+
 Attribute* get_attribute(Memory*);
 Attribute* get_attribute(Memory* memory) {
     Attribute* attribute = alloc_attribute(memory);
@@ -64,9 +90,58 @@ Attribute* get_attribute(Memory* memory) {
             if (i == 0) {
                 attribute->stack_map_table.entries = stack_map_entry;
             }
+            u8 bit_tag = pop_u8(memory);
+            stack_map_entry->bit_tag = bit_tag;
+            if (bit_tag < 64) {
+                stack_map_entry->tag = STACK_MAP_SAME_FRAME;
+            } else if (bit_tag < 128) {
+                stack_map_entry->tag =
+                    STACK_MAP_SAME_LOCALS_1_STACK_ITEM_FRAME;
+                stack_map_entry->stack_items = get_verification_type(memory);
+            } else if (bit_tag == 255) {
+                stack_map_entry->tag = STACK_MAP_FULL_FRAME;
+                stack_map_entry->offset_delta = pop_u16(memory);
+                u16 local_item_count = pop_u16(memory);
+                stack_map_entry->local_item_count = local_item_count;
+                for (u16 j = 0; j < local_item_count; ++j) {
+                    VerificationType* verification_type =
+                        get_verification_type(memory);
+                    if (j == 0) {
+                        stack_map_entry->local_items = verification_type;
+                    }
+                }
+                u16 stack_item_count = pop_u16(memory);
+                stack_map_entry->stack_item_count = stack_item_count;
+                for (u16 j = 0; j < stack_item_count; ++j) {
+                    VerificationType* verification_type =
+                        get_verification_type(memory);
+                    if (j == 0) {
+                        stack_map_entry->stack_items = verification_type;
+                    }
+                }
+            } else if ((248 <= bit_tag) && (bit_tag < 251)) {
+                stack_map_entry->tag = STACK_MAP_CHOP_FRAME;
+                stack_map_entry->offset_delta = pop_u16(memory);
+            } else if ((252 <= bit_tag) && (bit_tag < 255)) {
+                stack_map_entry->tag = STACK_MAP_APPEND_FRAME;
+                stack_map_entry->offset_delta = pop_u16(memory);
+                u16 local_item_count = (u16)(bit_tag - 251);
+                stack_map_entry->local_item_count = local_item_count;
+                for (u16 j = 0; j < local_item_count; ++j) {
+                    VerificationType* verification_type =
+                        get_verification_type(memory);
+                    if (j == 0) {
+                        stack_map_entry->local_items = verification_type;
+                    }
+                }
+            } else {
+                fprintf(stderr,
+                        "[ERROR] `{ u8 stack_map_bit_tag (%hhu) }` "
+                        "unimplemented\n\n",
+                        bit_tag);
+                exit(EXIT_FAILURE);
+            }
         }
-        printf("[IMPL] StackMapTable implementation not finished!\n");
-        exit(EXIT_FAILURE);
     } else {
         fprintf(stderr,
                 "[DEBUG] %hu\n[DEBUG] %s\n",
@@ -202,6 +277,13 @@ static void set_tokens(Memory* memory) {
     }
 }
 
+#define PAD_NEWLINE(x) "    " x "\n"
+#define OP_OFFSET      "%-16s"
+#define FMT_OP_U8      PAD_NEWLINE(OP_OFFSET "%hhu")
+#define FMT_OP_U16     PAD_NEWLINE(OP_OFFSET "%hu")
+#define FMT_OP_I16     PAD_NEWLINE(OP_OFFSET "%hd")
+#define FMT_OP_U8_I8   PAD_NEWLINE(OP_OFFSET "%-4hhu%hhd")
+
 void print_attribute(Attribute*);
 void print_attribute(Attribute* attribute) {
     printf("\n  %-4hu%-14u(u16 AttributeNameIndex, u32 AttributeSize)",
@@ -220,17 +302,108 @@ void print_attribute(Attribute* attribute) {
             OpCode op_code = attribute->code.bytes[i++];
             switch (op_code) {
             case OP_ALOAD_0: {
-                printf("    aload_0\n");
+                printf(PAD_NEWLINE("aload_0"));
                 break;
             case OP_INVOKESPECIAL: {
-                u8  byte1 = attribute->code.bytes[i++];
-                u8  byte2 = attribute->code.bytes[i++];
-                u16 index = (u16)((byte1 << 8) | byte2);
-                printf("    invokespecial #%hu\n", index);
+                printf(FMT_OP_U16,
+                       "invokespecial",
+                       pop_u16_at(attribute->code.bytes, &i));
                 break;
             }
             case OP_RETURN: {
-                printf("    return\n");
+                printf(PAD_NEWLINE("return"));
+                break;
+            }
+            case OP_GETFIELD: {
+                printf(FMT_OP_U16,
+                       "getfield",
+                       pop_u16_at(attribute->code.bytes, &i));
+                break;
+            }
+            case OP_IFNE: {
+                printf(FMT_OP_I16,
+                       "ifne",
+                       (i16)pop_u16_at(attribute->code.bytes, &i));
+                break;
+            }
+            case OP_ICONST_0: {
+                printf(PAD_NEWLINE("iconst_0"));
+                break;
+            }
+            case OP_IRETURN: {
+                printf(PAD_NEWLINE("ireturn"));
+                break;
+            }
+            case OP_ICONST_1: {
+                printf(PAD_NEWLINE("iconst_1"));
+                break;
+            }
+            case OP_IF_ICMPNE: {
+                printf(FMT_OP_I16,
+                       "if_icmpne",
+                       (i16)pop_u16_at(attribute->code.bytes, &i));
+                break;
+            }
+            case OP_ISTORE_1: {
+                printf(PAD_NEWLINE("istore_1"));
+                break;
+            }
+            case OP_ISTORE_2: {
+                printf(PAD_NEWLINE("istore_2"));
+                break;
+            }
+            case OP_ISTORE_3: {
+                printf(PAD_NEWLINE("istore_3"));
+                break;
+            }
+            case OP_ICONST_2: {
+                printf(PAD_NEWLINE("iconst_2"));
+                break;
+            }
+            case OP_ISTORE: {
+                printf(FMT_OP_U8,
+                       "istore",
+                       pop_u8_at(attribute->code.bytes, &i));
+                break;
+            }
+            case OP_ILOAD: {
+                printf(FMT_OP_U8,
+                       "iload",
+                       pop_u8_at(attribute->code.bytes, &i));
+                break;
+            }
+            case OP_IF_ICMPGE: {
+                printf(FMT_OP_I16,
+                       "if_icmpge",
+                       (i16)pop_u16_at(attribute->code.bytes, &i));
+                break;
+            }
+            case OP_ILOAD_2: {
+                printf(PAD_NEWLINE("iload_2"));
+                break;
+            }
+            case OP_ILOAD_3: {
+                printf(PAD_NEWLINE("iload_3"));
+                break;
+            }
+            case OP_ILOAD_1: {
+                printf(PAD_NEWLINE("iload_1"));
+                break;
+            }
+            case OP_IADD: {
+                printf(PAD_NEWLINE("iadd"));
+                break;
+            }
+            case OP_IINC: {
+                u8 index = pop_u8_at(attribute->code.bytes, &i);
+                i8 constant = (i8)pop_u8_at(attribute->code.bytes, &i);
+                printf(FMT_OP_U8_I8, "iinc", index, constant);
+                break;
+            }
+            case OP_GOTO: {
+                printf(FMT_OP_I16,
+                       "goto",
+                       (i16)pop_u16_at(attribute->code.bytes, &i));
                 break;
             }
             }

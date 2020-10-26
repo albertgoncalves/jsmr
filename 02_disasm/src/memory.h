@@ -8,6 +8,7 @@
 #define COUNT_ATTRIBS             128
 #define COUNT_LINE_NUMBER_ENTRIES 32
 #define COUNT_STACK_MAP_ENTRIES   32
+#define COUNT_VERIFICATION_TYPES  32
 
 typedef enum {
     MAGIC,
@@ -138,6 +139,25 @@ typedef enum {
     OP_ALOAD_0 = 42,
     OP_INVOKESPECIAL = 183,
     OP_RETURN = 177,
+    OP_GETFIELD = 180,
+    OP_IFNE = 154,
+    OP_ICONST_0 = 3,
+    OP_IRETURN = 172,
+    OP_ICONST_1 = 4,
+    OP_IF_ICMPNE = 160,
+    OP_ISTORE_1 = 60,
+    OP_ISTORE_2 = 61,
+    OP_ISTORE_3 = 62,
+    OP_ICONST_2 = 5,
+    OP_ISTORE = 54,
+    OP_ILOAD = 21,
+    OP_IF_ICMPGE = 162,
+    OP_ILOAD_2 = 28,
+    OP_ILOAD_3 = 29,
+    OP_ILOAD_1 = 27,
+    OP_IADD = 96,
+    OP_IINC = 132,
+    OP_GOTO = 167,
 } OpCode;
 
 typedef struct {
@@ -163,11 +183,12 @@ typedef enum {
 } VerificationTypeTag;
 
 typedef struct {
-    u8 bit_tag;
     union {
         u16 constant_pool_index;
         u16 offset;
-    } VerificationTypeTag;
+    };
+    u8                  bit_tag;
+    VerificationTypeTag tag;
 } VerificationType;
 
 typedef enum {
@@ -226,20 +247,22 @@ typedef struct {
 } Token;
 
 typedef struct {
-    usize           file_size;
-    u8              bytes[COUNT_BYTES];
-    usize           byte_index;
-    Token           tokens[COUNT_TOKENS];
-    usize           token_index;
-    char            chars[COUNT_CHARS];
-    char*           utf8s_by_index[COUNT_UTF8S];
-    usize           char_index;
-    Attribute       attributes[COUNT_ATTRIBS];
-    usize           attribute_index;
-    LineNumberEntry line_number_entries[COUNT_LINE_NUMBER_ENTRIES];
-    usize           line_number_entry_index;
-    StackMapEntry   stack_map_entries[COUNT_STACK_MAP_ENTRIES];
-    usize           stack_map_entry_index;
+    usize            file_size;
+    u8               bytes[COUNT_BYTES];
+    usize            byte_index;
+    Token            tokens[COUNT_TOKENS];
+    usize            token_index;
+    char             chars[COUNT_CHARS];
+    char*            utf8s_by_index[COUNT_UTF8S];
+    usize            char_index;
+    Attribute        attributes[COUNT_ATTRIBS];
+    usize            attribute_index;
+    LineNumberEntry  line_number_entries[COUNT_LINE_NUMBER_ENTRIES];
+    usize            line_number_entry_index;
+    StackMapEntry    stack_map_entries[COUNT_STACK_MAP_ENTRIES];
+    usize            stack_map_entry_index;
+    VerificationType verification_types[COUNT_VERIFICATION_TYPES];
+    usize            verification_type_index;
 } Memory;
 
 static void set_file_to_bytes(Memory* memory, const char* filename) {
@@ -294,6 +317,16 @@ static u16 pop_u16(Memory* memory) {
     return bytes;
 }
 
+static u8 pop_u8_at(u8* bytes, u32* index) {
+    return bytes[(*index)++];
+}
+
+static u16 pop_u16_at(u8* bytes, u32* index) {
+    u8 byte1 = bytes[(*index)++];
+    u8 byte2 = bytes[(*index)++];
+    return (u16)((byte1 << 8) | byte2);
+}
+
 static u32 pop_u32(Memory* memory) {
     usize next_index = memory->byte_index + 4;
     if (memory->file_size < next_index) {
@@ -338,6 +371,14 @@ static StackMapEntry* alloc_stack_map_entry(Memory* memory) {
         exit(EXIT_FAILURE);
     }
     return &memory->stack_map_entries[memory->stack_map_entry_index++];
+}
+
+static VerificationType* alloc_verification_type(Memory* memory) {
+    if (COUNT_VERIFICATION_TYPES <= memory->verification_type_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new verification type\n");
+        exit(EXIT_FAILURE);
+    }
+    return &memory->verification_types[memory->verification_type_index++];
 }
 
 static void push_tag_u16(Memory* memory, Tag tag, u16 value) {
