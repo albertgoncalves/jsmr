@@ -276,11 +276,11 @@ static void set_tokens(Memory* memory) {
     }
 }
 
-#define OP_OFFSET      "%-14s"
-#define FMT_OP_U8      OP_OFFSET "%hhu\n"
-#define FMT_OP_U16     OP_OFFSET "%hu\n"
-#define FMT_OP_I16     OP_OFFSET "%hd\n"
-#define FMT_OP_U8_I8   OP_OFFSET "%-6hhu%hhd\n"
+#define OP_OFFSET    "%-14s"
+#define OP_FMT_U8    OP_OFFSET "%hhu\n"
+#define OP_FMT_U16   OP_OFFSET "%hu\n"
+#define OP_FMT_I16   OP_OFFSET "%hd\n"
+#define OP_FMT_U8_I8 OP_OFFSET "%-6hhu%hhd\n"
 
 void print_attribute(Attribute*);
 void print_attribute(Attribute* attribute) {
@@ -305,7 +305,7 @@ void print_attribute(Attribute* attribute) {
                 printf("aload_0\n");
                 break;
             case OP_INVOKESPECIAL: {
-                printf(FMT_OP_U16,
+                printf(OP_FMT_U16,
                        "invokespecial",
                        pop_u16_at(attribute->code.bytes, &i));
                 break;
@@ -315,13 +315,13 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_GETFIELD: {
-                printf(FMT_OP_U16,
+                printf(OP_FMT_U16,
                        "getfield",
                        pop_u16_at(attribute->code.bytes, &i));
                 break;
             }
             case OP_IFNE: {
-                printf(FMT_OP_I16,
+                printf(OP_FMT_I16,
                        "ifne",
                        (i16)pop_u16_at(attribute->code.bytes, &i));
                 break;
@@ -339,7 +339,7 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_IF_ICMPNE: {
-                printf(FMT_OP_I16,
+                printf(OP_FMT_I16,
                        "if_icmpne",
                        (i16)pop_u16_at(attribute->code.bytes, &i));
                 break;
@@ -361,19 +361,19 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_ISTORE: {
-                printf(FMT_OP_U8,
+                printf(OP_FMT_U8,
                        "istore",
                        pop_u8_at(attribute->code.bytes, &i));
                 break;
             }
             case OP_ILOAD: {
-                printf(FMT_OP_U8,
+                printf(OP_FMT_U8,
                        "iload",
                        pop_u8_at(attribute->code.bytes, &i));
                 break;
             }
             case OP_IF_ICMPGE: {
-                printf(FMT_OP_I16,
+                printf(OP_FMT_I16,
                        "if_icmpge",
                        (i16)pop_u16_at(attribute->code.bytes, &i));
                 break;
@@ -452,6 +452,15 @@ void print_attribute(Attribute* attribute) {
     }
 }
 
+#define TOKEN_FMT_U16           "  %-18hu"
+#define CONSTANT_TAG_PAD        "                          "
+#define CONSTANT_FMT_U8         "  %-4hhu"
+#define CONSTANT_FMT_U8_U16     CONSTANT_FMT_U8 "%-14hu"
+#define CONSTANT_FMT_U8_U16_U16 CONSTANT_FMT_U8 "%-4hu%-10hu"
+#define CONSTANT_FMT_U8_U16_STRING \
+    CONSTANT_FMT_U8 "%-4hu\"%s\"\n                    "
+#define CONSTANT_FMT_INDEX "#%-3hu "
+
 static void print_tokens(Memory* memory) {
     Token* tokens = memory->tokens;
     for (usize i = 0; i < memory->token_index; ++i) {
@@ -462,22 +471,21 @@ static void print_tokens(Memory* memory) {
             break;
         }
         case MINOR_VERSION: {
-            printf("  %-18hu(u16 MinorVersion)\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 MinorVersion)\n", token.u16);
             break;
         }
         case MAJOR_VERSION: {
-            printf("  %-18hu(u16 MajorVersion)\n\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 MajorVersion)\n\n", token.u16);
             break;
         }
         case CONSTANT_POOL_COUNT: {
-            printf("  %-18hu(u16 ConstantPoolCount)\n\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 ConstantPoolCount)\n\n", token.u16);
             break;
         }
         case CONSTANT: {
             switch (token.constant.tag) {
             case CONSTANT_TAG_UTF8: {
-                printf("  %-4hhu%-4hu\"%s\"\n"
-                       "                    #%-3hu "
+                printf(CONSTANT_FMT_U8_U16_STRING CONSTANT_FMT_INDEX
                        "(u8 Constant.Utf8, u16 Length, u8*%hu String)\n",
                        (u8)token.constant.tag,
                        token.constant.utf8.size,
@@ -487,7 +495,8 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_CLASS: {
-                printf("  %-4hhu%-14hu#%-3hu (u8 Constant.Class, "
+                printf(CONSTANT_FMT_U8_U16 CONSTANT_FMT_INDEX
+                       "(u8 Constant.Class, "
                        "u16 NameIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.class_.name_index,
@@ -495,7 +504,8 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_STRING: {
-                printf("  %-4hhu%-14hu#%-3hu (u8 Constant.String, "
+                printf(CONSTANT_FMT_U8_U16 CONSTANT_FMT_INDEX
+                       "(u8 Constant.String, "
                        "u16 StringIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.string.string_index,
@@ -503,7 +513,7 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_FIELD_REF: {
-                printf("  %-4hhu%-4hu%-10hu#%-3hu "
+                printf(CONSTANT_FMT_U8_U16_U16 CONSTANT_FMT_INDEX
                        "(u8 Constant.FieldRef, u16 ClassIndex, "
                        "u16 NameAndTypeIndex)\n",
                        (u8)token.constant.tag,
@@ -513,9 +523,9 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_METHOD_REF: {
-                printf("  %-4hhu%-4hu%-10hu#%-3hu "
-                       "(u8 Constant.MethodRef, u16 ClassIndex,\n"
-                       "                          "
+                printf(CONSTANT_FMT_U8_U16_U16 CONSTANT_FMT_INDEX
+                       "(u8 Constant.MethodRef, u16 "
+                       "ClassIndex,\n" CONSTANT_TAG_PAD
                        "u16 NameAndTypeIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.ref.class_index,
@@ -524,9 +534,9 @@ static void print_tokens(Memory* memory) {
                 break;
             }
             case CONSTANT_TAG_NAME_AND_TYPE: {
-                printf("  %-4hhu%-4hu%-10hu#%-3hu "
-                       "(u8 Constant.NameAndType, u16 NameIndex,\n"
-                       "                          "
+                printf(CONSTANT_FMT_U8_U16_U16 CONSTANT_FMT_INDEX
+                       "(u8 Constant.NameAndType, u16 "
+                       "NameIndex,\n" CONSTANT_TAG_PAD
                        "u16 DescriptorIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.name_and_type.name_index,
@@ -583,23 +593,23 @@ static void print_tokens(Memory* memory) {
             break;
         }
         case THIS_CLASS: {
-            printf("  %-18hu(u16 ThisClass)\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 ThisClass)\n", token.u16);
             break;
         }
         case SUPER_CLASS: {
-            printf("  %-18hu(u16 SuperClass)\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 SuperClass)\n", token.u16);
             break;
         }
         case INTERFACES_COUNT: {
-            printf("  %-18hu(u16 InterfacesCount)\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 InterfacesCount)\n", token.u16);
             break;
         }
         case FIELDS_COUNT: {
-            printf("  %-18hu(u16 FieldsCount)\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 FieldsCount)\n", token.u16);
             break;
         }
         case METHODS_COUNT: {
-            printf("  %-18hu(u16 MethodsCount)\n", token.u16);
+            printf(TOKEN_FMT_U16 "(u16 MethodsCount)\n", token.u16);
             break;
         }
         case METHOD: {
