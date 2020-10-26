@@ -50,7 +50,7 @@ Attribute* get_attribute(Memory* memory) {
         u16 exception_table_count = pop_u16(memory);
         attribute->code.exception_table_count = exception_table_count;
         if (exception_table_count != 0) {
-            fprintf(stdout,
+            fprintf(stderr,
                     "[ERROR] `{ ? exception_table }` unimplemented\n\n");
             exit(EXIT_FAILURE);
         }
@@ -135,7 +135,7 @@ Attribute* get_attribute(Memory* memory) {
                     }
                 }
             } else {
-                fprintf(stdout,
+                fprintf(stderr,
                         "[ERROR] `{ u8 stack_map_bit_tag (%hhu) }` "
                         "unimplemented\n\n",
                         bit_tag);
@@ -143,11 +143,11 @@ Attribute* get_attribute(Memory* memory) {
             }
         }
     } else {
-        fprintf(stdout,
-                "[DEBUG] %hu\n[DEBUG] %s\n",
+        fprintf(stderr,
+                "[DEBUG] %hu\n[DEBUG] %s\n"
+                "[ERROR] `{ ? attribute }` unimplemented\n\n",
                 attribute_name_index,
                 attribute_name);
-        fprintf(stdout, "[ERROR] `{ ? attribute }` unimplemented\n\n");
         exit(EXIT_FAILURE);
     }
     return attribute;
@@ -161,7 +161,7 @@ static void set_tokens(Memory* memory) {
     {
         u32 magic = pop_u32(memory);
         if (magic != 0xCAFEBABE) {
-            fprintf(stdout, "[ERROR] Incorrect magic constant\n");
+            printf("[ERROR] Incorrect magic constant\n");
             return;
         }
         Token* token = alloc_token(memory);
@@ -183,11 +183,11 @@ static void set_tokens(Memory* memory) {
             case CONSTANT_TAG_UTF8: {
                 u16 utf8_size = pop_u16(memory);
                 if (COUNT_CHARS <= (memory->char_index + utf8_size + 1)) {
-                    fprintf(stdout, "[ERROR] Unable to allocate string\n");
+                    fprintf(stderr, "[ERROR] Unable to allocate string\n");
                     exit(EXIT_FAILURE);
                 }
                 if (COUNT_UTF8S <= i) {
-                    fprintf(stdout,
+                    fprintf(stderr,
                             "[ERROR] Unable to allocate UTF8 pointer\n");
                     exit(EXIT_FAILURE);
                 }
@@ -222,10 +222,9 @@ static void set_tokens(Memory* memory) {
                 break;
             }
             default: {
-                fprintf(stdout,
-                        "[ERROR] `{ ConstantTag tag (%hhu) }` "
-                        "unimplemented\n\n",
-                        (u8)tag);
+                printf("[ERROR] `{ ConstantTag tag (%hhu) }` "
+                       "unimplemented\n\n",
+                       (u8)tag);
                 return;
             }
             }
@@ -238,7 +237,7 @@ static void set_tokens(Memory* memory) {
         u16 interfaces_count = pop_u16(memory);
         push_tag_u16(memory, INTERFACES_COUNT, interfaces_count);
         for (u16 i = 0; i < interfaces_count; ++i) {
-            fprintf(stdout, "[ERROR] `{ u16 interface }` unimplemented\n\n");
+            printf("[ERROR] `{ u16 interface }` unimplemented\n\n");
             return;
         }
     }
@@ -246,7 +245,7 @@ static void set_tokens(Memory* memory) {
         u16 fields_count = pop_u16(memory);
         push_tag_u16(memory, FIELDS_COUNT, fields_count);
         for (u16 i = 0; i < fields_count; ++i) {
-            fprintf(stdout, "[ERROR] `{ ? field }` unimplemented\n\n");
+            printf("[ERROR] `{ ? field }` unimplemented\n\n");
             return;
         }
     }
@@ -398,18 +397,18 @@ void print_attribute(Attribute* attribute) {
             case OP_IINC: {
                 u8 index = pop_u8_at(attribute->code.bytes, &i);
                 i8 constant = (i8)pop_u8_at(attribute->code.bytes, &i);
-                printf(FMT_OP_U8_I8, "iinc", index, constant);
+                printf(OP_FMT_U8_I8, "iinc", index, constant);
                 break;
             }
             case OP_GOTO: {
-                printf(FMT_OP_I16,
+                printf(OP_FMT_I16,
                        "goto",
                        (i16)pop_u16_at(attribute->code.bytes, &i));
                 break;
             }
             }
             default: {
-                fprintf(stdout,
+                fprintf(stderr,
                         "[ERROR] `{ OpCode op_code (%hhu) }` "
                         "unimplemented\n\n",
                         (u8)op_code);
@@ -447,7 +446,7 @@ void print_attribute(Attribute* attribute) {
     }
     case ATTRIB_STACK_MAP_TABLE: {
         printf("[ StackMapTableAttribute ]\n");
-        fprintf(stdout, "[ERROR] StackMapTableAttribute not printable\n");
+        fprintf(stderr, "[ERROR] StackMapTableAttribute not printable\n");
         exit(EXIT_FAILURE);
     }
     }
@@ -647,20 +646,19 @@ i32 main(i32 n, const char** args) {
            sizeof(Token),
            sizeof(Memory));
     if (n < 2) {
-        fprintf(stdout, "[ERROR] No file provided\n");
+        fprintf(stderr, "[ERROR] No file provided\n");
         exit(EXIT_FAILURE);
     }
     Memory* memory = calloc(1, sizeof(Memory));
     if (memory == NULL) {
-        fprintf(stdout, "[ERROR] `calloc` failed\n");
+        fprintf(stderr, "[ERROR] `calloc` failed\n");
         exit(EXIT_FAILURE);
     }
     set_file_to_bytes(memory, args[1]);
     set_tokens(memory);
     print_tokens(memory);
-    fprintf(stdout,
-            "\n[INFO] %zu bytes left!\n",
-            memory->file_size - memory->byte_index);
+    printf("\n[INFO] %zu bytes left!\n",
+           memory->file_size - memory->byte_index);
     free(memory);
     return EXIT_SUCCESS;
 }
