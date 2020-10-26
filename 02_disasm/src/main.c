@@ -40,12 +40,12 @@ Attribute* get_attribute(Memory* memory) {
     if (!strcmp(attribute_name, "Code")) {
         attribute->tag = ATTRIB_CODE;
         attribute->code.max_stack = pop_u16(memory);
-        attribute->code.max_locals = pop_u16(memory);
-        u32 bytes_count = pop_u32(memory);
-        attribute->code.bytes_count = bytes_count;
-        if (bytes_count != 0) {
+        attribute->code.max_local = pop_u16(memory);
+        u32 byte_count = pop_u32(memory);
+        attribute->code.byte_count = byte_count;
+        if (byte_count != 0) {
             attribute->code.bytes = pop_u8_ref(memory);
-            memory->byte_index += (bytes_count - 1);
+            memory->byte_index += (byte_count - 1);
         }
         u16 exception_table_count = pop_u16(memory);
         attribute->code.exception_table_count = exception_table_count;
@@ -54,11 +54,11 @@ Attribute* get_attribute(Memory* memory) {
                     "[ERROR] `{ ? exception_table }` unimplemented\n\n");
             exit(EXIT_FAILURE);
         }
-        u16 attributes_count = pop_u16(memory);
-        attribute->code.attributes_count = attributes_count;
+        u16 attribute_count = pop_u16(memory);
+        attribute->code.attribute_count = attribute_count;
         Attribute* code_attribute = NULL;
         Attribute* code_prev_attribute = NULL;
-        for (u16 i = 0; i < attributes_count; ++i) {
+        for (u16 i = 0; i < attribute_count; ++i) {
             code_attribute = get_attribute(memory);
             if (i == 0) {
                 attribute->code.attributes = code_attribute;
@@ -234,35 +234,35 @@ static void set_tokens(Memory* memory) {
     push_tag_u16(memory, THIS_CLASS, pop_u16(memory));
     push_tag_u16(memory, SUPER_CLASS, pop_u16(memory));
     {
-        u16 interfaces_count = pop_u16(memory);
-        push_tag_u16(memory, INTERFACES_COUNT, interfaces_count);
-        for (u16 i = 0; i < interfaces_count; ++i) {
+        u16 interface_count = pop_u16(memory);
+        push_tag_u16(memory, INTERFACE_COUNT, interface_count);
+        for (u16 i = 0; i < interface_count; ++i) {
             printf("[ERROR] `{ u16 interface }` unimplemented\n\n");
             return;
         }
     }
     {
-        u16 fields_count = pop_u16(memory);
-        push_tag_u16(memory, FIELDS_COUNT, fields_count);
-        for (u16 i = 0; i < fields_count; ++i) {
+        u16 field_count = pop_u16(memory);
+        push_tag_u16(memory, FIELD_COUNT, field_count);
+        for (u16 i = 0; i < field_count; ++i) {
             printf("[ERROR] `{ ? field }` unimplemented\n\n");
             return;
         }
     }
     {
-        u16 methods_count = pop_u16(memory);
-        push_tag_u16(memory, METHODS_COUNT, methods_count);
-        for (u16 i = 0; i < methods_count; ++i) {
+        u16 method_count = pop_u16(memory);
+        push_tag_u16(memory, METHOD_COUNT, method_count);
+        for (u16 i = 0; i < method_count; ++i) {
             Token* token = alloc_token(memory);
             token->tag = METHOD;
             token->method.access_flags = pop_u16(memory);
             token->method.name_index = pop_u16(memory);
             token->method.descriptor_index = pop_u16(memory);
-            u16 method_attributes_count = pop_u16(memory);
-            token->method.attributes_count = method_attributes_count;
+            u16 method_attribute_count = pop_u16(memory);
+            token->method.attribute_count = method_attribute_count;
             Attribute* attribute = NULL;
             Attribute* prev_attribute = NULL;
-            for (u16 j = 0; j < method_attributes_count; ++j) {
+            for (u16 j = 0; j < method_attribute_count; ++j) {
                 attribute = get_attribute(memory);
                 if (j == 0) {
                     token->method.attributes = attribute;
@@ -282,6 +282,114 @@ static void set_tokens(Memory* memory) {
 #define OP_FMT_I16   OP_OFFSET "%hd\n"
 #define OP_FMT_U8_I8 OP_OFFSET "%-6hhu%hhd\n"
 
+static void print_op_codes(u8* bytes, u32 byte_count) {
+    printf("    {\n");
+    for (u32 i = 0; i < byte_count;) {
+        printf("      #%-4u ", i);
+        OpCode op_code = bytes[i++];
+        switch (op_code) {
+        case OP_ALOAD_0: {
+            printf("aload_0\n");
+            break;
+        }
+        case OP_INVOKESPECIAL: {
+            printf(OP_FMT_U16, "invokespecial", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_RETURN: {
+            printf("return\n");
+            break;
+        }
+        case OP_GETFIELD: {
+            printf(OP_FMT_U16, "getfield", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_IFNE: {
+            printf(OP_FMT_I16, "ifne", (i16)pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_ICONST_0: {
+            printf("iconst_0\n");
+            break;
+        }
+        case OP_IRETURN: {
+            printf("ireturn\n");
+            break;
+        }
+        case OP_ICONST_1: {
+            printf("iconst_1\n");
+            break;
+        }
+        case OP_IF_ICMPNE: {
+            printf(OP_FMT_I16, "if_icmpne", (i16)pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_ISTORE_1: {
+            printf("istore_1\n");
+            break;
+        }
+        case OP_ISTORE_2: {
+            printf("istore_2\n");
+            break;
+        }
+        case OP_ISTORE_3: {
+            printf("istore_3\n");
+            break;
+        }
+        case OP_ICONST_2: {
+            printf("iconst_2\n");
+            break;
+        }
+        case OP_ISTORE: {
+            printf(OP_FMT_U8, "istore", pop_u8_at(bytes, &i));
+            break;
+        }
+        case OP_ILOAD: {
+            printf(OP_FMT_U8, "iload", pop_u8_at(bytes, &i));
+            break;
+        }
+        case OP_IF_ICMPGE: {
+            printf(OP_FMT_I16, "if_icmpge", (i16)pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_ILOAD_2: {
+            printf("iload_2\n");
+            break;
+        }
+        case OP_ILOAD_3: {
+            printf("iload_3\n");
+            break;
+        }
+        case OP_ILOAD_1: {
+            printf("iload_1\n");
+            break;
+        }
+        case OP_IADD: {
+            printf("iadd\n");
+            break;
+        }
+        case OP_IINC: {
+            u8 index = pop_u8_at(bytes, &i);
+            i8 constant = (i8)pop_u8_at(bytes, &i);
+            printf(OP_FMT_U8_I8, "iinc", index, constant);
+            break;
+        }
+        case OP_GOTO: {
+            printf(OP_FMT_I16, "goto", (i16)pop_u16_at(bytes, &i));
+            break;
+        }
+        default: {
+            fprintf(stderr,
+                    "[ERROR] `{ OpCode op_code (%hhu) }` "
+                    "unimplemented\n\n",
+                    (u8)op_code);
+            exit(EXIT_FAILURE);
+        }
+        }
+    }
+    printf("    }\n");
+}
+
 void print_attribute(Attribute*);
 void print_attribute(Attribute* attribute) {
     printf("\n  %-4hu%-14u(u16 AttributeNameIndex, u32 AttributeSize)\n"
@@ -292,137 +400,17 @@ void print_attribute(Attribute* attribute) {
     case ATTRIB_CODE: {
         printf("[ CodeAttribute ]\n");
         printf("  %-4hu%-4hu%-10u"
-               "(u16 CodeMaxStack, u16 CodeMaxLocals, u32 CodeBytesCount)\n",
+               "(u16 CodeMaxStack, u16 CodeMaxLocal, u32 CodeByteCount)\n",
                attribute->code.max_stack,
-               attribute->code.max_locals,
-               attribute->code.bytes_count);
-        printf("    {\n");
-        for (u32 i = 0; i < attribute->code.bytes_count;) {
-            printf("      #%-4u ", i);
-            OpCode op_code = attribute->code.bytes[i++];
-            switch (op_code) {
-            case OP_ALOAD_0: {
-                printf("aload_0\n");
-                break;
-            case OP_INVOKESPECIAL: {
-                printf(OP_FMT_U16,
-                       "invokespecial",
-                       pop_u16_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_RETURN: {
-                printf("return\n");
-                break;
-            }
-            case OP_GETFIELD: {
-                printf(OP_FMT_U16,
-                       "getfield",
-                       pop_u16_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_IFNE: {
-                printf(OP_FMT_I16,
-                       "ifne",
-                       (i16)pop_u16_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_ICONST_0: {
-                printf("iconst_0\n");
-                break;
-            }
-            case OP_IRETURN: {
-                printf("ireturn\n");
-                break;
-            }
-            case OP_ICONST_1: {
-                printf("iconst_1\n");
-                break;
-            }
-            case OP_IF_ICMPNE: {
-                printf(OP_FMT_I16,
-                       "if_icmpne",
-                       (i16)pop_u16_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_ISTORE_1: {
-                printf("istore_1\n");
-                break;
-            }
-            case OP_ISTORE_2: {
-                printf("istore_2\n");
-                break;
-            }
-            case OP_ISTORE_3: {
-                printf("istore_3\n");
-                break;
-            }
-            case OP_ICONST_2: {
-                printf("iconst_2\n");
-                break;
-            }
-            case OP_ISTORE: {
-                printf(OP_FMT_U8,
-                       "istore",
-                       pop_u8_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_ILOAD: {
-                printf(OP_FMT_U8,
-                       "iload",
-                       pop_u8_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_IF_ICMPGE: {
-                printf(OP_FMT_I16,
-                       "if_icmpge",
-                       (i16)pop_u16_at(attribute->code.bytes, &i));
-                break;
-            }
-            case OP_ILOAD_2: {
-                printf("iload_2\n");
-                break;
-            }
-            case OP_ILOAD_3: {
-                printf("iload_3\n");
-                break;
-            }
-            case OP_ILOAD_1: {
-                printf("iload_1\n");
-                break;
-            }
-            case OP_IADD: {
-                printf("iadd\n");
-                break;
-            }
-            case OP_IINC: {
-                u8 index = pop_u8_at(attribute->code.bytes, &i);
-                i8 constant = (i8)pop_u8_at(attribute->code.bytes, &i);
-                printf(OP_FMT_U8_I8, "iinc", index, constant);
-                break;
-            }
-            case OP_GOTO: {
-                printf(OP_FMT_I16,
-                       "goto",
-                       (i16)pop_u16_at(attribute->code.bytes, &i));
-                break;
-            }
-            }
-            default: {
-                fprintf(stderr,
-                        "[ERROR] `{ OpCode op_code (%hhu) }` "
-                        "unimplemented\n\n",
-                        (u8)op_code);
-                exit(EXIT_FAILURE);
-            }
-            }
-        }
-        printf("    }\n");
+               attribute->code.max_local,
+               attribute->code.byte_count);
+        print_op_codes(attribute->code.bytes, attribute->code.byte_count);
         printf("  %-18hu(u16 CodeExceptionTableCount)\n",
                attribute->code.exception_table_count);
-        printf("  %-18hu(u16 CodeAttributesCount)\n",
-               attribute->code.attributes_count);
+        printf("  %-18hu(u16 CodeAttributeCount)\n",
+               attribute->code.attribute_count);
         Attribute* code_attribute = attribute->code.attributes;
-        for (u16 _ = 0; _ < attribute->code.attributes_count; ++_) {
+        for (u16 _ = 0; _ < attribute->code.attribute_count; ++_) {
             if (code_attribute != NULL) {
                 print_attribute(code_attribute);
                 code_attribute = code_attribute->next_attribute;
@@ -600,30 +588,30 @@ static void print_tokens(Memory* memory) {
             printf(TOKEN_FMT_U16 "(u16 SuperClass)\n", token.u16);
             break;
         }
-        case INTERFACES_COUNT: {
-            printf(TOKEN_FMT_U16 "(u16 InterfacesCount)\n", token.u16);
+        case INTERFACE_COUNT: {
+            printf(TOKEN_FMT_U16 "(u16 InterfaceCount)\n", token.u16);
             break;
         }
-        case FIELDS_COUNT: {
-            printf(TOKEN_FMT_U16 "(u16 FieldsCount)\n", token.u16);
+        case FIELD_COUNT: {
+            printf(TOKEN_FMT_U16 "(u16 FieldCount)\n", token.u16);
             break;
         }
-        case METHODS_COUNT: {
-            printf(TOKEN_FMT_U16 "(u16 MethodsCount)\n", token.u16);
+        case METHOD_COUNT: {
+            printf(TOKEN_FMT_U16 "(u16 MethodCount)\n", token.u16);
             break;
         }
         case METHOD: {
             printf("  %-4hu%-4hu%-4hu%-6hu"
                    "(u16 MethodAccessFlags, u16 MethodNameIndex,\n"
                    "                     "
-                   "u16 MethodDescriptorIndex, u16 MethodAttributesCount)"
+                   "u16 MethodDescriptorIndex, u16 MethodAttributeCount)"
                    "\n",
                    token.method.access_flags,
                    token.method.name_index,
                    token.method.descriptor_index,
-                   token.method.attributes_count);
+                   token.method.attribute_count);
             Attribute* attribute = token.method.attributes;
-            for (u16 j = 0; j < token.method.attributes_count; ++j) {
+            for (u16 j = 0; j < token.method.attribute_count; ++j) {
                 if (attribute != NULL) {
                     print_attribute(attribute);
                     attribute = attribute->next_attribute;

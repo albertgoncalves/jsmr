@@ -19,11 +19,11 @@ typedef enum {
     ACCESS_FLAGS,
     THIS_CLASS,
     SUPER_CLASS,
-    INTERFACES_COUNT,
+    INTERFACE_COUNT,
     // INTERFACE,
-    FIELDS_COUNT,
+    FIELD_COUNT,
     // FIELD,
-    METHODS_COUNT,
+    METHOD_COUNT,
     METHOD,
 } Tag;
 
@@ -127,11 +127,11 @@ typedef struct Attribute Attribute;
 typedef struct {
     Attribute* attributes;
     u8*        bytes;
-    u32        bytes_count;
+    u32        byte_count;
     u16        max_stack;
-    u16        max_locals;
+    u16        max_local;
     u16        exception_table_count;
-    u16        attributes_count;
+    u16        attribute_count;
     // ExceptionTable* exception_table;
 } Code;
 
@@ -233,7 +233,7 @@ typedef struct {
     u16        access_flags;
     u16        name_index;
     u16        descriptor_index;
-    u16        attributes_count;
+    u16        attribute_count;
 } Method;
 
 typedef struct {
