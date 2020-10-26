@@ -477,6 +477,10 @@ static void print_op_codes(u8* bytes, u32 byte_count) {
             printf(OP_FMT_U8, "ldc", pop_u8_at(bytes, &i));
             break;
         }
+        case OP_ILOAD_0: {
+            printf("iload_0\n");
+            break;
+        }
         default: {
             fflush(stdout);
             fprintf(stderr,

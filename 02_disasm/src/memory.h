@@ -175,6 +175,7 @@ typedef enum {
     OP_INVOKESTATIC = 184,
     OP_INVOKEVIRTUAL = 182,
     OP_LDC = 18,
+    OP_ILOAD_0 = 26,
 } OpCode;
 
 typedef struct {
