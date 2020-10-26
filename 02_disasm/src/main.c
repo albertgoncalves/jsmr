@@ -277,32 +277,33 @@ static void set_tokens(Memory* memory) {
     }
 }
 
-#define PAD_NEWLINE(x) "    " x "\n"
-#define OP_OFFSET      "%-16s"
-#define FMT_OP_U8      PAD_NEWLINE(OP_OFFSET "%hhu")
-#define FMT_OP_U16     PAD_NEWLINE(OP_OFFSET "%hu")
-#define FMT_OP_I16     PAD_NEWLINE(OP_OFFSET "%hd")
-#define FMT_OP_U8_I8   PAD_NEWLINE(OP_OFFSET "%-4hhu%hhd")
+#define OP_OFFSET      "%-14s"
+#define FMT_OP_U8      OP_OFFSET "%hhu\n"
+#define FMT_OP_U16     OP_OFFSET "%hu\n"
+#define FMT_OP_I16     OP_OFFSET "%hd\n"
+#define FMT_OP_U8_I8   OP_OFFSET "%-6hhu%hhd\n"
 
 void print_attribute(Attribute*);
 void print_attribute(Attribute* attribute) {
-    printf("\n  %-4hu%-14u(u16 AttributeNameIndex, u32 AttributeSize)",
+    printf("\n  %-4hu%-14u(u16 AttributeNameIndex, u32 AttributeSize)\n"
+           "                    ",
            attribute->name_index,
            attribute->size);
     switch (attribute->tag) {
     case ATTRIB_CODE: {
-        printf(" [ CodeAttribute ]\n");
+        printf("[ CodeAttribute ]\n");
         printf("  %-4hu%-4hu%-10u"
                "(u16 CodeMaxStack, u16 CodeMaxLocals, u32 CodeBytesCount)\n",
                attribute->code.max_stack,
                attribute->code.max_locals,
                attribute->code.bytes_count);
-        printf("  {\n");
+        printf("    {\n");
         for (u32 i = 0; i < attribute->code.bytes_count;) {
+            printf("      #%-4u ", i);
             OpCode op_code = attribute->code.bytes[i++];
             switch (op_code) {
             case OP_ALOAD_0: {
-                printf(PAD_NEWLINE("aload_0"));
+                printf("aload_0\n");
                 break;
             case OP_INVOKESPECIAL: {
                 printf(FMT_OP_U16,
@@ -311,7 +312,7 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_RETURN: {
-                printf(PAD_NEWLINE("return"));
+                printf("return\n");
                 break;
             }
             case OP_GETFIELD: {
@@ -327,15 +328,15 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_ICONST_0: {
-                printf(PAD_NEWLINE("iconst_0"));
+                printf("iconst_0\n");
                 break;
             }
             case OP_IRETURN: {
-                printf(PAD_NEWLINE("ireturn"));
+                printf("ireturn\n");
                 break;
             }
             case OP_ICONST_1: {
-                printf(PAD_NEWLINE("iconst_1"));
+                printf("iconst_1\n");
                 break;
             }
             case OP_IF_ICMPNE: {
@@ -345,19 +346,19 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_ISTORE_1: {
-                printf(PAD_NEWLINE("istore_1"));
+                printf("istore_1\n");
                 break;
             }
             case OP_ISTORE_2: {
-                printf(PAD_NEWLINE("istore_2"));
+                printf("istore_2\n");
                 break;
             }
             case OP_ISTORE_3: {
-                printf(PAD_NEWLINE("istore_3"));
+                printf("istore_3\n");
                 break;
             }
             case OP_ICONST_2: {
-                printf(PAD_NEWLINE("iconst_2"));
+                printf("iconst_2\n");
                 break;
             }
             case OP_ISTORE: {
@@ -379,19 +380,19 @@ void print_attribute(Attribute* attribute) {
                 break;
             }
             case OP_ILOAD_2: {
-                printf(PAD_NEWLINE("iload_2"));
+                printf("iload_2\n");
                 break;
             }
             case OP_ILOAD_3: {
-                printf(PAD_NEWLINE("iload_3"));
+                printf("iload_3\n");
                 break;
             }
             case OP_ILOAD_1: {
-                printf(PAD_NEWLINE("iload_1"));
+                printf("iload_1\n");
                 break;
             }
             case OP_IADD: {
-                printf(PAD_NEWLINE("iadd"));
+                printf("iadd\n");
                 break;
             }
             case OP_IINC: {
@@ -416,7 +417,7 @@ void print_attribute(Attribute* attribute) {
             }
             }
         }
-        printf("  }\n");
+        printf("    }\n");
         printf("  %-18hu(u16 CodeExceptionTableCount)\n",
                attribute->code.exception_table_count);
         printf("  %-18hu(u16 CodeAttributesCount)\n",
@@ -431,7 +432,7 @@ void print_attribute(Attribute* attribute) {
         break;
     }
     case ATTRIB_LINE_NUMBER_TABLE: {
-        printf(" [ LineNumberTableAttribute ]\n");
+        printf("[ LineNumberTableAttribute ]\n");
         u16 line_number_table_count = attribute->line_number_table.count;
         printf("  %-18hu(u16 LineNumberTableCount)\n",
                line_number_table_count);
@@ -445,7 +446,7 @@ void print_attribute(Attribute* attribute) {
         break;
     }
     case ATTRIB_STACK_MAP_TABLE: {
-        printf(" [ StackMapTableAttribute ]\n");
+        printf("[ StackMapTableAttribute ]\n");
         fprintf(stdout, "[ERROR] StackMapTableAttribute not printable\n");
         exit(EXIT_FAILURE);
     }
@@ -514,7 +515,8 @@ static void print_tokens(Memory* memory) {
             }
             case CONSTANT_TAG_METHOD_REF: {
                 printf("  %-4hhu%-4hu%-10hu#%-3hu "
-                       "(u8 Constant.MethodRef, u16 ClassIndex, "
+                       "(u8 Constant.MethodRef, u16 ClassIndex,\n"
+                       "                          "
                        "u16 NameAndTypeIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.ref.class_index,
@@ -524,7 +526,8 @@ static void print_tokens(Memory* memory) {
             }
             case CONSTANT_TAG_NAME_AND_TYPE: {
                 printf("  %-4hhu%-4hu%-10hu#%-3hu "
-                       "(u8 Constant.NameAndType, u16 NameIndex, "
+                       "(u8 Constant.NameAndType, u16 NameIndex,\n"
+                       "                          "
                        "u16 DescriptorIndex)\n",
                        (u8)token.constant.tag,
                        token.constant.name_and_type.name_index,
@@ -602,7 +605,8 @@ static void print_tokens(Memory* memory) {
         }
         case METHOD: {
             printf("  %-4hu%-4hu%-4hu%-6hu"
-                   "(u16 MethodAccessFlags, u16 MethodNameIndex, "
+                   "(u16 MethodAccessFlags, u16 MethodNameIndex,\n"
+                   "                     "
                    "u16 MethodDescriptorIndex, u16 MethodAttributesCount)"
                    "\n",
                    token.method.access_flags,
