@@ -2,13 +2,15 @@
 #define __MEMORY_H__
 
 #define COUNT_BYTES               1024
-#define COUNT_TOKENS              128
+#define COUNT_TOKENS              64
 #define COUNT_CHARS               512
-#define COUNT_UTF8S               48
-#define COUNT_ATTRIBS             128
+#define COUNT_UTF8S               64
+#define COUNT_ATTRIBS             64
 #define COUNT_LINE_NUMBER_ENTRIES 32
-#define COUNT_STACK_MAP_ENTRIES   32
-#define COUNT_VERIFICATION_TYPES  32
+#define COUNT_STACK_MAP_ENTRIES   8
+#define COUNT_VERIFICATION_TYPES  8
+#define COUNT_NEST_MEMBER_CLASSES 8
+#define COUNT_INNER_CLASS_ENTRIES 8
 
 typedef enum {
     MAGIC,
@@ -25,6 +27,8 @@ typedef enum {
     // FIELD,
     METHOD_COUNT,
     METHOD,
+    ATTRIBUTE_COUNT,
+    ATTRIBUTE,
 } Tag;
 
 typedef enum {
@@ -113,6 +117,9 @@ typedef enum {
     ATTRIB_CODE,
     ATTRIB_LINE_NUMBER_TABLE,
     ATTRIB_STACK_MAP_TABLE,
+    ATTRIB_SOURCE_FILE,
+    ATTRIB_NEST_MEMBER,
+    ATTRIB_INNER_CLASSES,
 } AttributeTag;
 
 // typedef struct {
@@ -158,6 +165,16 @@ typedef enum {
     OP_IADD = 96,
     OP_IINC = 132,
     OP_GOTO = 167,
+    OP_BIPUSH = 16,
+    OP_NEW = 187,
+    OP_DUP = 89,
+    OP_ASTORE_2 = 77,
+    OP_ALOAD_2 = 44,
+    OP_PUTFIELD = 181,
+    OP_GETSTATIC = 178,
+    OP_INVOKESTATIC = 184,
+    OP_INVOKEVIRTUAL = 182,
+    OP_LDC = 18,
 } OpCode;
 
 typedef struct {
@@ -216,11 +233,31 @@ typedef struct {
     u16            count;
 } StackMapTable;
 
+typedef struct {
+    u16* classes;
+    u16  count;
+} NestMember;
+
+typedef struct {
+    u16 inner_class_info_index;
+    u16 outer_class_info_index;
+    u16 inner_name_index;
+    u16 inner_class_access_flags;
+} InnerClassEntry;
+
+typedef struct {
+    InnerClassEntry* entries;
+    u16              count;
+} InnerClasses;
+
 struct Attribute {
     union {
+        u16             u16;
         Code            code;
         LineNumberTable line_number_table;
         StackMapTable   stack_map_table;
+        NestMember      nest_member;
+        InnerClasses    inner_classes;
     };
     Attribute*   next_attribute;
     u32          size;
@@ -238,10 +275,11 @@ typedef struct {
 
 typedef struct {
     union {
-        u32      u32;
-        u16      u16;
-        Constant constant;
-        Method   method;
+        u32        u32;
+        u16        u16;
+        Constant   constant;
+        Method     method;
+        Attribute* attribute;
     };
     Tag tag;
 } Token;
@@ -263,6 +301,10 @@ typedef struct {
     StackMapEntry    stack_map_entries[COUNT_STACK_MAP_ENTRIES];
     usize            verification_type_index;
     VerificationType verification_types[COUNT_VERIFICATION_TYPES];
+    usize            nest_member_class_index;
+    u16              nest_member_classes[COUNT_NEST_MEMBER_CLASSES];
+    usize            inner_class_entry_index;
+    InnerClassEntry  inner_class_entries[COUNT_INNER_CLASS_ENTRIES];
 } Memory;
 
 static void set_file_to_bytes(Memory* memory, const char* filename) {
@@ -379,6 +421,22 @@ static VerificationType* alloc_verification_type(Memory* memory) {
         exit(EXIT_FAILURE);
     }
     return &memory->verification_types[memory->verification_type_index++];
+}
+
+static u16* alloc_nest_member_class(Memory* memory) {
+    if (COUNT_NEST_MEMBER_CLASSES <= memory->nest_member_class_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new nest member class\n");
+        exit(EXIT_FAILURE);
+    }
+    return &memory->nest_member_classes[memory->nest_member_class_index++];
+}
+
+static InnerClassEntry* alloc_inner_class_entry(Memory* memory) {
+    if (COUNT_INNER_CLASS_ENTRIES <= memory->inner_class_entry_index) {
+        fprintf(stderr, "[ERROR] Unable to allocate new inner class entry\n");
+        exit(EXIT_FAILURE);
+    }
+    return &memory->inner_class_entries[memory->inner_class_entry_index++];
 }
 
 static void push_tag_u16(Memory* memory, Tag tag, u16 value) {

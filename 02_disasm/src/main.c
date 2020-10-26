@@ -2,9 +2,28 @@
 
 #include "memory.h"
 
+#define TOKEN_FMT_U8     "  %-18hhu"
+#define TOKEN_FMT_U16    "  %-18hu"
+#define TOKEN_FMT_U8_U16 "  %-4hhu%-14hu"
+
+#define OP_OFFSET    "%-14s"
+#define OP_FMT_U8    OP_OFFSET "%hhu\n"
+#define OP_FMT_U16   OP_OFFSET "%hu\n"
+#define OP_FMT_I16   OP_OFFSET "%hd\n"
+#define OP_FMT_U8_I8 OP_OFFSET "%-6hhu%hhd\n"
+
+#define CONSTANT_TAG_PAD        "                          "
+#define CONSTANT_FMT_U8         "  %-4hhu"
+#define CONSTANT_FMT_U8_U16     CONSTANT_FMT_U8 "%-14hu"
+#define CONSTANT_FMT_U8_U16_U16 CONSTANT_FMT_U8 "%-4hu%-10hu"
+#define CONSTANT_FMT_U8_U16_STRING \
+    CONSTANT_FMT_U8 "%-4hu\"%s\"\n                    "
+#define CONSTANT_FMT_INDEX "#%-3hu "
+
 static VerificationType* get_verification_type(Memory* memory) {
-    VerificationType*   verification_type = alloc_verification_type(memory);
-    u8                  bit_tag = pop_u8(memory);
+    VerificationType* verification_type = alloc_verification_type(memory);
+    u8                bit_tag = pop_u8(memory);
+    verification_type->bit_tag = bit_tag;
     VerificationTypeTag tag = (VerificationTypeTag)bit_tag;
     switch (tag) {
     case VERI_TOP:
@@ -97,6 +116,7 @@ Attribute* get_attribute(Memory* memory) {
             } else if (bit_tag < 128) {
                 stack_map_entry->tag =
                     STACK_MAP_SAME_LOCALS_1_STACK_ITEM_FRAME;
+                stack_map_entry->stack_item_count = 1;
                 stack_map_entry->stack_items = get_verification_type(memory);
             } else if (bit_tag == 255) {
                 stack_map_entry->tag = STACK_MAP_FULL_FRAME;
@@ -142,6 +162,35 @@ Attribute* get_attribute(Memory* memory) {
                 exit(EXIT_FAILURE);
             }
         }
+    } else if (!strcmp(attribute_name, "SourceFile")) {
+        attribute->tag = ATTRIB_SOURCE_FILE;
+        attribute->u16 = pop_u16(memory);
+    } else if (!strcmp(attribute_name, "NestMembers")) {
+        attribute->tag = ATTRIB_NEST_MEMBER;
+        u16 nest_member_count = pop_u16(memory);
+        attribute->nest_member.count = nest_member_count;
+        for (u16 i = 0; i < nest_member_count; ++i) {
+            u16* nest_member_class = alloc_nest_member_class(memory);
+            if (i == 0) {
+                attribute->nest_member.classes = nest_member_class;
+            }
+            *nest_member_class = pop_u16(memory);
+        }
+    } else if (!strcmp(attribute_name, "InnerClasses")) {
+        attribute->tag = ATTRIB_INNER_CLASSES;
+        u16 inner_classes_count = pop_u16(memory);
+        attribute->inner_classes.count = inner_classes_count;
+        for (u16 i = 0; i < inner_classes_count; ++i) {
+            InnerClassEntry* inner_class_entry =
+                alloc_inner_class_entry(memory);
+            if (i == 0) {
+                attribute->inner_classes.entries = inner_class_entry;
+            }
+            inner_class_entry->inner_class_info_index = pop_u16(memory);
+            inner_class_entry->outer_class_info_index = pop_u16(memory);
+            inner_class_entry->inner_name_index = pop_u16(memory);
+            inner_class_entry->inner_class_access_flags = pop_u16(memory);
+        }
     } else {
         fprintf(stderr,
                 "[DEBUG] %hu\n[DEBUG] %s\n"
@@ -158,6 +207,9 @@ static void set_tokens(Memory* memory) {
     memory->token_index = 0;
     memory->char_index = 0;
     memory->attribute_index = 0;
+    memory->line_number_entry_index = 0;
+    memory->stack_map_entry_index = 0;
+    memory->verification_type_index = 0;
     {
         u32 magic = pop_u32(memory);
         if (magic != 0xCAFEBABE) {
@@ -274,13 +326,20 @@ static void set_tokens(Memory* memory) {
             }
         }
     }
+    {
+        u16 attribute_count = pop_u16(memory);
+        {
+            Token* token = alloc_token(memory);
+            token->tag = ATTRIBUTE_COUNT;
+            token->u16 = attribute_count;
+        }
+        for (u16 _ = 0; _ < attribute_count; ++_) {
+            Token* token = alloc_token(memory);
+            token->tag = ATTRIBUTE;
+            token->attribute = get_attribute(memory);
+        }
+    }
 }
-
-#define OP_OFFSET    "%-14s"
-#define OP_FMT_U8    OP_OFFSET "%hhu\n"
-#define OP_FMT_U16   OP_OFFSET "%hu\n"
-#define OP_FMT_I16   OP_OFFSET "%hd\n"
-#define OP_FMT_U8_I8 OP_OFFSET "%-6hhu%hhd\n"
 
 static void print_op_codes(u8* bytes, u32 byte_count) {
     printf("    {\n");
@@ -378,9 +437,50 @@ static void print_op_codes(u8* bytes, u32 byte_count) {
             printf(OP_FMT_I16, "goto", (i16)pop_u16_at(bytes, &i));
             break;
         }
+        case OP_BIPUSH: {
+            printf(OP_FMT_U8, "bipush", pop_u8_at(bytes, &i));
+            break;
+        }
+        case OP_NEW: {
+            printf(OP_FMT_U16, "new", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_DUP: {
+            printf("dup\n");
+            break;
+        }
+        case OP_ASTORE_2: {
+            printf("astore_2\n");
+            break;
+        }
+        case OP_ALOAD_2: {
+            printf("aload_2\n");
+            break;
+        }
+        case OP_PUTFIELD: {
+            printf(OP_FMT_U16, "putfield", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_GETSTATIC: {
+            printf(OP_FMT_U16, "getstatic", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_INVOKESTATIC: {
+            printf(OP_FMT_U16, "invokestatic", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_INVOKEVIRTUAL: {
+            printf(OP_FMT_U16, "invokevirtual", pop_u16_at(bytes, &i));
+            break;
+        }
+        case OP_LDC: {
+            printf(OP_FMT_U8, "ldc", pop_u8_at(bytes, &i));
+            break;
+        }
         default: {
+            fflush(stdout);
             fprintf(stderr,
-                    "[ERROR] `{ OpCode op_code (%hhu) }` "
+                    "\n[ERROR] `{ OpCode op_code (%hhu) }` "
                     "unimplemented\n\n",
                     (u8)op_code);
             exit(EXIT_FAILURE);
@@ -388,6 +488,62 @@ static void print_op_codes(u8* bytes, u32 byte_count) {
         }
     }
     printf("    }\n");
+}
+
+static void print_verification_table(VerificationType* verification_types,
+                                     u16 verification_type_count) {
+    for (u16 i = 0; i < verification_type_count; ++i) {
+        VerificationType verification_type = verification_types[i];
+        switch (verification_type.tag) {
+        case VERI_TOP: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.Top)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_INTEGER: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.Integer)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_FLOAT: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.Float)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_DOUBLE: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.Double)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_LONG: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.Long)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_NULL: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.Null)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_UNINIT_THIS: {
+            printf(TOKEN_FMT_U8 "(u8 VerificationItem.UninitThis)\n",
+                   verification_type.bit_tag);
+            break;
+        }
+        case VERI_OBJECT: {
+            printf(TOKEN_FMT_U8_U16 "(u8 VerificationItem.Object)\n",
+                   verification_type.bit_tag,
+                   verification_type.constant_pool_index);
+            break;
+        }
+        case VERI_UNINIT: {
+            printf(TOKEN_FMT_U8_U16 "(u8 VerificationItem.Uninit)\n",
+                   verification_type.bit_tag,
+                   verification_type.offset);
+            break;
+        }
+        }
+    }
 }
 
 void print_attribute(Attribute*);
@@ -405,9 +561,9 @@ void print_attribute(Attribute* attribute) {
                attribute->code.max_local,
                attribute->code.byte_count);
         print_op_codes(attribute->code.bytes, attribute->code.byte_count);
-        printf("  %-18hu(u16 CodeExceptionTableCount)\n",
+        printf(TOKEN_FMT_U16 "(u16 CodeExceptionTableCount)\n",
                attribute->code.exception_table_count);
-        printf("  %-18hu(u16 CodeAttributeCount)\n",
+        printf(TOKEN_FMT_U16 "(u16 CodeAttributeCount)\n",
                attribute->code.attribute_count);
         Attribute* code_attribute = attribute->code.attributes;
         for (u16 _ = 0; _ < attribute->code.attribute_count; ++_) {
@@ -421,7 +577,7 @@ void print_attribute(Attribute* attribute) {
     case ATTRIB_LINE_NUMBER_TABLE: {
         printf("[ LineNumberTableAttribute ]\n");
         u16 line_number_table_count = attribute->line_number_table.count;
-        printf("  %-18hu(u16 LineNumberTableCount)\n",
+        printf(TOKEN_FMT_U16 "(u16 LineNumberTableCount)\n",
                line_number_table_count);
         for (u16 i = 0; i < line_number_table_count; ++i) {
             LineNumberEntry line_number_entry =
@@ -434,20 +590,106 @@ void print_attribute(Attribute* attribute) {
     }
     case ATTRIB_STACK_MAP_TABLE: {
         printf("[ StackMapTableAttribute ]\n");
-        fprintf(stderr, "[ERROR] StackMapTableAttribute not printable\n");
-        exit(EXIT_FAILURE);
+        for (u16 i = 0; i < attribute->stack_map_table.count; ++i) {
+            StackMapEntry stack_map_entry =
+                attribute->stack_map_table.entries[i];
+            switch (stack_map_entry.tag) {
+            case STACK_MAP_SAME_FRAME: {
+                printf(TOKEN_FMT_U8 "(u8 SameFrame)\n",
+                       stack_map_entry.bit_tag);
+                break;
+            }
+            case STACK_MAP_SAME_LOCALS_1_STACK_ITEM_FRAME: {
+                printf(TOKEN_FMT_U8 "(u8 SameLocals1StackItemFrame)\n",
+                       stack_map_entry.bit_tag);
+                print_verification_table(stack_map_entry.stack_items,
+                                         stack_map_entry.stack_item_count);
+                break;
+            }
+            case STACK_MAP_SAME_LOCALS_1_STACK_ITEM_FRAME_EXTENDED: {
+                printf(TOKEN_FMT_U8_U16
+                       "(u8 SameLocals1StackItemFrameExtended, "
+                       "u16 OffsetDelta)\n",
+                       stack_map_entry.bit_tag,
+                       stack_map_entry.offset_delta);
+                print_verification_table(stack_map_entry.stack_items,
+                                         stack_map_entry.stack_item_count);
+                break;
+            }
+            case STACK_MAP_CHOP_FRAME: {
+                printf(TOKEN_FMT_U8_U16 "(u8 ChopFrame, u16 OffsetDelta)\n",
+                       stack_map_entry.bit_tag,
+                       stack_map_entry.offset_delta);
+                break;
+            }
+            case STACK_MAP_SAME_FRAME_EXTENDED: {
+                printf(TOKEN_FMT_U8_U16 "(u8 SameFrameExtended, "
+                                        "u16 OffsetDelta)\n",
+                       stack_map_entry.bit_tag,
+                       stack_map_entry.offset_delta);
+                break;
+            }
+            case STACK_MAP_APPEND_FRAME: {
+                printf(TOKEN_FMT_U8_U16 "(u8 AppendFrame, u16 OffsetDelta)\n",
+                       stack_map_entry.bit_tag,
+                       stack_map_entry.offset_delta);
+                print_verification_table(stack_map_entry.local_items,
+                                         stack_map_entry.local_item_count);
+                break;
+            }
+            case STACK_MAP_FULL_FRAME: {
+                printf(TOKEN_FMT_U8_U16 "(u8 FullFrame, u16 OffsetDelta)\n",
+                       stack_map_entry.bit_tag,
+                       stack_map_entry.offset_delta);
+                printf("  %-18hu(u16 LocalItemCount)\n",
+                       stack_map_entry.local_item_count);
+                print_verification_table(stack_map_entry.local_items,
+                                         stack_map_entry.local_item_count);
+                printf("  %-18hu(u16 StackItemCount)\n",
+                       stack_map_entry.stack_item_count);
+                print_verification_table(stack_map_entry.stack_items,
+                                         stack_map_entry.stack_item_count);
+                break;
+            }
+            }
+        }
+        break;
+    }
+    case ATTRIB_SOURCE_FILE: {
+        printf("[ SourceFileAttribute ]\n");
+        printf(TOKEN_FMT_U16 "(u16 SourceFileIndex)\n", attribute->u16);
+        break;
+    }
+    case ATTRIB_NEST_MEMBER: {
+        printf("[ NestMember ]\n");
+        printf(TOKEN_FMT_U16 "(u16 NestMemberCount)\n",
+               attribute->nest_member.count);
+        printf("  [");
+        for (u16 i = 0; i < attribute->nest_member.count; ++i) {
+            printf(" %hu", attribute->nest_member.classes[i]);
+        }
+        printf(" ]\n");
+        break;
+    }
+    case ATTRIB_INNER_CLASSES: {
+        printf("[ InnerClasses ]\n");
+        printf(TOKEN_FMT_U16 "(u16 InnerClassesCount)\n",
+               attribute->inner_classes.count);
+        for (u16 i = 0; i < attribute->inner_classes.count; ++i) {
+            InnerClassEntry inner_class_entry =
+                attribute->inner_classes.entries[i];
+            printf("  %-4hu%-4hu%-4hu%-6hu"
+                   "(u16 InnerClassInfoIndex, u16 OuterClassInfoIndex,\n"
+                   "                     "
+                   "u16 InnerNameIndex, u16 InnerClassAccessFlags)\n",
+                   inner_class_entry.inner_class_info_index,
+                   inner_class_entry.outer_class_info_index,
+                   inner_class_entry.inner_name_index,
+                   inner_class_entry.inner_class_access_flags);
+        }
     }
     }
 }
-
-#define TOKEN_FMT_U16           "  %-18hu"
-#define CONSTANT_TAG_PAD        "                          "
-#define CONSTANT_FMT_U8         "  %-4hhu"
-#define CONSTANT_FMT_U8_U16     CONSTANT_FMT_U8 "%-14hu"
-#define CONSTANT_FMT_U8_U16_U16 CONSTANT_FMT_U8 "%-4hu%-10hu"
-#define CONSTANT_FMT_U8_U16_STRING \
-    CONSTANT_FMT_U8 "%-4hu\"%s\"\n                    "
-#define CONSTANT_FMT_INDEX "#%-3hu "
 
 static void print_tokens(Memory* memory) {
     Token* tokens = memory->tokens;
@@ -589,19 +831,19 @@ static void print_tokens(Memory* memory) {
             break;
         }
         case INTERFACE_COUNT: {
-            printf(TOKEN_FMT_U16 "(u16 InterfaceCount)\n", token.u16);
+            printf("\n" TOKEN_FMT_U16 "(u16 InterfaceCount)\n", token.u16);
             break;
         }
         case FIELD_COUNT: {
-            printf(TOKEN_FMT_U16 "(u16 FieldCount)\n", token.u16);
+            printf("\n" TOKEN_FMT_U16 "(u16 FieldCount)\n", token.u16);
             break;
         }
         case METHOD_COUNT: {
-            printf(TOKEN_FMT_U16 "(u16 MethodCount)\n", token.u16);
+            printf("\n" TOKEN_FMT_U16 "(u16 MethodCount)\n", token.u16);
             break;
         }
         case METHOD: {
-            printf("  %-4hu%-4hu%-4hu%-6hu"
+            printf("\n  %-4hu%-4hu%-4hu%-6hu"
                    "(u16 MethodAccessFlags, u16 MethodNameIndex,\n"
                    "                     "
                    "u16 MethodDescriptorIndex, u16 MethodAttributeCount)"
@@ -617,6 +859,14 @@ static void print_tokens(Memory* memory) {
                     attribute = attribute->next_attribute;
                 }
             }
+            break;
+        }
+        case ATTRIBUTE_COUNT: {
+            printf("\n" TOKEN_FMT_U16 "(u16 AttributeCount)\n", token.u16);
+            break;
+        }
+        case ATTRIBUTE: {
+            print_attribute(token.attribute);
             break;
         }
         }
