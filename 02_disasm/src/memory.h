@@ -125,14 +125,14 @@ typedef enum {
 typedef struct Attribute Attribute;
 
 typedef struct {
-    u16 max_stack;
-    u16 max_locals;
-    u32 bytes_count;
-    u8* bytes;
-    // ExceptionTable* exception_table;
+    Attribute* attributes;
+    u8*        bytes;
+    u32        bytes_count;
+    u16        max_stack;
+    u16        max_locals;
     u16        exception_table_count;
     u16        attributes_count;
-    Attribute* attributes;
+    // ExceptionTable* exception_table;
 } Code;
 
 typedef enum {
@@ -166,8 +166,8 @@ typedef struct {
 } LineNumberEntry;
 
 typedef struct {
-    u16              count;
     LineNumberEntry* entries;
+    u16              count;
 } LineNumberTable;
 
 typedef enum {
@@ -187,8 +187,8 @@ typedef struct {
         u16 constant_pool_index;
         u16 offset;
     };
-    u8                  bit_tag;
     VerificationTypeTag tag;
+    u8                  bit_tag;
 } VerificationType;
 
 typedef enum {
@@ -202,38 +202,38 @@ typedef enum {
 } StackMapTag;
 
 typedef struct {
-    u8                bit_tag;
+    VerificationType* local_items;
+    VerificationType* stack_items;
     u16               offset_delta;
     u16               local_item_count;
-    VerificationType* local_items;
     u16               stack_item_count;
-    VerificationType* stack_items;
     StackMapTag       tag;
+    u8                bit_tag;
 } StackMapEntry;
 
 typedef struct {
-    u16            count;
     StackMapEntry* entries;
+    u16            count;
 } StackMapTable;
 
 struct Attribute {
-    Attribute* next_attribute;
-    u16        name_index;
-    u32        size;
     union {
         Code            code;
         LineNumberTable line_number_table;
         StackMapTable   stack_map_table;
     };
+    Attribute*   next_attribute;
+    u32          size;
+    u16          name_index;
     AttributeTag tag;
 };
 
 typedef struct {
+    Attribute* attributes;
     u16        access_flags;
     u16        name_index;
     u16        descriptor_index;
     u16        attributes_count;
-    Attribute* attributes;
 } Method;
 
 typedef struct {
@@ -248,21 +248,21 @@ typedef struct {
 
 typedef struct {
     usize            file_size;
-    u8               bytes[COUNT_BYTES];
     usize            byte_index;
-    Token            tokens[COUNT_TOKENS];
+    u8               bytes[COUNT_BYTES];
     usize            token_index;
+    Token            tokens[COUNT_TOKENS];
+    usize            char_index;
     char             chars[COUNT_CHARS];
     char*            utf8s_by_index[COUNT_UTF8S];
-    usize            char_index;
-    Attribute        attributes[COUNT_ATTRIBS];
     usize            attribute_index;
-    LineNumberEntry  line_number_entries[COUNT_LINE_NUMBER_ENTRIES];
+    Attribute        attributes[COUNT_ATTRIBS];
     usize            line_number_entry_index;
-    StackMapEntry    stack_map_entries[COUNT_STACK_MAP_ENTRIES];
+    LineNumberEntry  line_number_entries[COUNT_LINE_NUMBER_ENTRIES];
     usize            stack_map_entry_index;
-    VerificationType verification_types[COUNT_VERIFICATION_TYPES];
+    StackMapEntry    stack_map_entries[COUNT_STACK_MAP_ENTRIES];
     usize            verification_type_index;
+    VerificationType verification_types[COUNT_VERIFICATION_TYPES];
 } Memory;
 
 static void set_file_to_bytes(Memory* memory, const char* filename) {

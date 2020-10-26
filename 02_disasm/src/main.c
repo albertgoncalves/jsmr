@@ -627,16 +627,22 @@ static void print_tokens(Memory* memory) {
 }
 
 i32 main(i32 n, const char** args) {
-    printf("sizeof(Constant)    : %zu\n"
-           "sizeof(Code)        : %zu\n"
-           "sizeof(Attribute)   : %zu\n"
-           "sizeof(Method)      : %zu\n"
-           "sizeof(Token)       : %zu\n"
-           "sizeof(Memory)      : %zu\n"
+    printf("sizeof(Constant)         : %zu\n"
+           "sizeof(Attribute)        : %zu\n"
+           "sizeof(Code)             : %zu\n"
+           "sizeof(VerificationType) : %zu\n"
+           "sizeof(StackMapEntry)    : %zu\n"
+           "sizeof(StackMapTable)    : %zu\n"
+           "sizeof(Method)           : %zu\n"
+           "sizeof(Token)            : %zu\n"
+           "sizeof(Memory)           : %zu\n"
            "\n",
            sizeof(Constant),
-           sizeof(Code),
            sizeof(Attribute),
+           sizeof(Code),
+           sizeof(VerificationType),
+           sizeof(StackMapEntry),
+           sizeof(StackMapTable),
            sizeof(Method),
            sizeof(Token),
            sizeof(Memory));
