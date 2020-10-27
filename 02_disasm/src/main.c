@@ -244,7 +244,7 @@ static void set_tokens(Memory* memory) {
                     exit(EXIT_FAILURE);
                 }
                 token->constant.utf8.size = utf8_size;
-                char* utf8 = &memory->chars[memory->char_index];
+                const char* utf8 = &memory->chars[memory->char_index];
                 token->constant.utf8.string = utf8;
                 memory->utf8s_by_index[i] = utf8;
                 for (u16 j = 0; j < utf8_size; ++j) {
@@ -341,7 +341,7 @@ static void set_tokens(Memory* memory) {
     }
 }
 
-static void print_op_codes(u8* bytes, u32 byte_count) {
+static void print_op_codes(const u8* bytes, u32 byte_count) {
     printf("    {\n");
     for (u32 i = 0; i < byte_count;) {
         printf("      #%-4u ", i);

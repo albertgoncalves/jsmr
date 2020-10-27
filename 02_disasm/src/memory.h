@@ -52,8 +52,8 @@ typedef enum {
 } ConstantTag;
 
 typedef struct {
-    u16         size;
     const char* string;
+    u16         size;
 } ConstantUtf8;
 
 typedef struct {
@@ -133,7 +133,7 @@ typedef struct Attribute Attribute;
 
 typedef struct {
     Attribute* attributes;
-    u8*        bytes;
+    const u8*  bytes;
     u32        byte_count;
     u16        max_stack;
     u16        max_local;
@@ -293,7 +293,7 @@ typedef struct {
     Token            tokens[COUNT_TOKENS];
     usize            char_index;
     char             chars[COUNT_CHARS];
-    char*            utf8s_by_index[COUNT_UTF8S];
+    const char*      utf8s_by_index[COUNT_UTF8S];
     usize            attribute_index;
     Attribute        attributes[COUNT_ATTRIBS];
     usize            line_number_entry_index;
@@ -360,11 +360,11 @@ static u16 pop_u16(Memory* memory) {
     return bytes;
 }
 
-static u8 pop_u8_at(u8* bytes, u32* index) {
+static u8 pop_u8_at(const u8* bytes, u32* index) {
     return bytes[(*index)++];
 }
 
-static u16 pop_u16_at(u8* bytes, u32* index) {
+static u16 pop_u16_at(const u8* bytes, u32* index) {
     u8 byte1 = bytes[(*index)++];
     u8 byte2 = bytes[(*index)++];
     return (u16)((byte1 << 8) | byte2);
