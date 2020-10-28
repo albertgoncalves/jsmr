@@ -697,7 +697,7 @@ void print_attribute(Attribute* attribute) {
 
 static void print_tokens(Memory* memory) {
     Token* tokens = memory->tokens;
-    for (usize i = 0; i < memory->token_index; ++i) {
+    for (u32 i = 0; i < memory->token_index; ++i) {
         Token token = tokens[i];
         switch (token.tag) {
         case MAGIC: {
@@ -965,7 +965,7 @@ i32 main(i32 n, const char** args) {
     set_file_to_bytes(memory, args[1]);
     set_tokens(memory);
     print_tokens(memory);
-    printf("\n[INFO] %zu bytes left!\n",
+    printf("\n[INFO] %u bytes left!\n",
            memory->file_size - memory->byte_index);
     free(memory);
     return EXIT_SUCCESS;

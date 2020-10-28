@@ -286,25 +286,25 @@ typedef struct {
 } Token;
 
 typedef struct {
-    usize            file_size;
-    usize            byte_index;
+    u32              file_size;
+    u32              byte_index;
     u8               bytes[COUNT_BYTES];
-    usize            token_index;
+    u32              token_index;
     Token            tokens[COUNT_TOKENS];
-    usize            char_index;
+    u32              char_index;
     char             chars[COUNT_CHARS];
     const char*      utf8s_by_index[COUNT_UTF8S];
-    usize            attribute_index;
+    u32              attribute_index;
     Attribute        attributes[COUNT_ATTRIBS];
-    usize            line_number_entry_index;
+    u32              line_number_entry_index;
     LineNumberEntry  line_number_entries[COUNT_LINE_NUMBER_ENTRIES];
-    usize            stack_map_entry_index;
+    u32              stack_map_entry_index;
     StackMapEntry    stack_map_entries[COUNT_STACK_MAP_ENTRIES];
-    usize            verification_type_index;
+    u32              verification_type_index;
     VerificationType verification_types[COUNT_VERIFICATION_TYPES];
-    usize            nest_member_class_index;
+    u32              nest_member_class_index;
     u16              nest_member_classes[COUNT_NEST_MEMBER_CLASSES];
-    usize            inner_class_entry_index;
+    u32              inner_class_entry_index;
     InnerClassEntry  inner_class_entries[COUNT_INNER_CLASS_ENTRIES];
 } Memory;
 
@@ -315,7 +315,7 @@ static void set_file_to_bytes(Memory* memory, const char* filename) {
         exit(EXIT_FAILURE);
     }
     fseek(file, 0, SEEK_END);
-    usize file_size = (usize)ftell(file);
+    u32 file_size = (u32)ftell(file);
     rewind(file);
     if (COUNT_BYTES < file_size) {
         fprintf(stderr, "[ERROR] File does not fit into memory\n");
@@ -350,12 +350,12 @@ static u8* pop_u8_ref(Memory* memory) {
 }
 
 static u16 pop_u16(Memory* memory) {
-    usize next_index = memory->byte_index + 2;
+    u32 next_index = memory->byte_index + 2;
     if (memory->file_size < next_index) {
         OUT_OF_BOUNDS;
     }
-    usize i = memory->byte_index;
-    u16   bytes = (u16)((memory->bytes[i] << 8) | (memory->bytes[i + 1]));
+    u32 i = memory->byte_index;
+    u16 bytes = (u16)((memory->bytes[i] << 8) | (memory->bytes[i + 1]));
     memory->byte_index = next_index;
     return bytes;
 }
@@ -371,11 +371,11 @@ static u16 pop_u16_at(const u8* bytes, u32* index) {
 }
 
 static u32 pop_u32(Memory* memory) {
-    usize next_index = memory->byte_index + 4;
+    u32 next_index = memory->byte_index + 4;
     if (memory->file_size < next_index) {
         OUT_OF_BOUNDS;
     }
-    usize i = memory->byte_index;
+    u32 i = memory->byte_index;
     u32 bytes = (u32)((memory->bytes[i] << 24) | (memory->bytes[i + 1] << 16) |
                       (memory->bytes[i + 2] << 8) | memory->bytes[i + 3]);
     memory->byte_index = next_index;
