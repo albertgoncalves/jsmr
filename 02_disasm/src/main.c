@@ -847,12 +847,68 @@ static void print_tokens(Memory* memory) {
             break;
         }
         case METHOD: {
-            printf("\n  %-4hu%-4hu%-4hu%-6hu"
-                   "(u16 MethodAccessFlags, u16 MethodNameIndex,\n"
+            printf("\n  %-18hu(u16 MethodAccessFlags) [",
+                   token.method.access_flags);
+            for (u16 j = 0; j < 16; ++j) {
+                MethodAccessFlag method_access_flag =
+                    (MethodAccessFlag)((1 << j) & token.method.access_flags);
+                switch (method_access_flag) {
+                case METHOD_ACC_PUBLIC: {
+                    printf(" ACC_PUBLIC");
+                    break;
+                }
+                case METHOD_ACC_PRIVATE: {
+                    printf(" ACC_PRIVATE");
+                    break;
+                }
+                case METHOD_ACC_PROTECTED: {
+                    printf(" ACC_PROTECTED");
+                    break;
+                }
+                case METHOD_ACC_STATIC: {
+                    printf(" ACC_STATIC");
+                    break;
+                }
+                case METHOD_ACC_FINAL: {
+                    printf(" ACC_FINAL");
+                    break;
+                }
+                case METHOD_ACC_SYNCHRONIZED: {
+                    printf(" ACC_SYNCHRONIZED");
+                    break;
+                }
+                case METHOD_ACC_BRIDGE: {
+                    printf(" ACC_BRIDGE");
+                    break;
+                }
+                case METHOD_ACC_VARARGS: {
+                    printf(" ACC_VARARGS");
+                    break;
+                }
+                case METHOD_ACC_NATIVE: {
+                    printf(" ACC_NATIVE");
+                    break;
+                }
+                case METHOD_ACC_ABSTRACT: {
+                    printf(" ACC_ABSTRACT");
+                    break;
+                }
+                case METHOD_ACC_STRICT: {
+                    printf(" ACC_STRICT");
+                    break;
+                }
+                case METHOD_ACC_SYNTHETIC: {
+                    printf(" ACC_SYNTHETIC");
+                    break;
+                }
+                }
+            }
+            printf(" ]\n\n");
+            printf("  %-4hu%-4hu%-10hu"
+                   "(u16 MethodNameIndex, u16 MethodDescriptorIndex,\n"
                    "                     "
-                   "u16 MethodDescriptorIndex, u16 MethodAttributeCount)"
+                   "u16 MethodAttributeCount)"
                    "\n",
-                   token.method.access_flags,
                    token.method.name_index,
                    token.method.descriptor_index,
                    token.method.attribute_count);
