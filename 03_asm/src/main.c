@@ -5,7 +5,7 @@
 
 typedef FILE File;
 
-typedef uint16_t u16;
+typedef uint8_t  u8;
 typedef uint32_t u32;
 
 typedef int32_t i32;
@@ -18,12 +18,14 @@ typedef enum {
     TOKEN_MAJOR_VERSION,
     TOKEN_MINOR_VERSION,
     TOKEN_NUMBER,
+    TOKEN_MINUS,
 } TokenTag;
 
 typedef struct {
     union {
-        u32 number;
+        i32 number;
     };
+    u32      line;
     TokenTag tag;
 } Token;
 
@@ -64,47 +66,58 @@ static Token* alloc_token(Memory* memory) {
     return &memory->tokens[memory->token_index++];
 }
 
-static u32 get_decimal(const char* decimal) {
-    u32 result = 0;
+static i32 get_decimal(const char* decimal) {
+    i32 result = 0;
     while (*decimal) {
-        u32 digit = (u32)(*(decimal++));
-        u32 value = 0;
+        u8  digit = (u8)(*(decimal++));
+        i32 value = 0;
         if (('0' <= digit) && (digit <= '9')) {
-            value = digit - '0';
+            value = (i32)(digit - '0');
         } else {
             fprintf(stderr, "[ERROR] Unable to parse decimal\n");
             exit(EXIT_FAILURE);
         }
-        result = (result * 10) | (value & 0xF);
+        result = (result * 10) + value;
     }
     return result;
 }
 
-static u32 get_hex(const char* hex) {
-    u32 result = 0;
+static i32 get_hex(const char* hex) {
+    i32 result = 0;
     while (*hex) {
-        u32 digit = (u32)(*(hex++));
-        u32 value = 0;
+        u8  digit = (u8)(*(hex++));
+        i32 value = 0;
         if (('0' <= digit) && (digit <= '9')) {
-            value = digit - '0';
+            value = (i32)(digit - '0');
         } else if (('a' <= digit) && (digit <= 'f')) {
-            value = (digit - 'a') + 10;
+            value = (i32)((digit - 'a') + 10);
         } else if (('A' <= digit) && (digit <= 'F')) {
-            value = (digit - 'A') + 10;
+            value = (i32)((digit - 'A') + 10);
         } else {
             fprintf(stderr, "[ERROR] Unable to parse hex\n");
             exit(EXIT_FAILURE);
         }
-        result = (result << 4) | (value & 0xF);
+        result = (result << 4) + value;
     }
     return result;
 }
 
+static i32 get_number(const char* number, u8 length) {
+    if ((1 < length) && (number[1] == 'x')) {
+        if (length == 2) {
+            fprintf(stderr, "[ERROR] Unable to parse hex\n");
+            exit(EXIT_FAILURE);
+        }
+        return get_hex(&number[2]);
+    }
+    return get_decimal(number);
+}
+
 static void set_tokens(Memory* memory) {
     const char* chars = memory->chars;
-    u16         file_size = (u16)memory->file_size;
-    u16         lines = 1;
-    for (u16 i = 0; i < file_size; ++i) {
+    u32         file_size = (u32)memory->file_size;
+    u32         lines = 1;
+    for (u32 i = 0; i < file_size; ++i) {
         switch (chars[i]) {
         case ' ':
         case '\t': {
@@ -123,37 +136,41 @@ static void set_tokens(Memory* memory) {
             }
             break;
         }
+        case '-': {
+            Token* token = alloc_token(memory);
+            token->tag = TOKEN_MINUS;
+            token->line = lines;
+            break;
+        }
         default: {
-            u16 j = (u16)(i + 1);
+            Token* token = alloc_token(memory);
+            token->line = lines;
+            u32 j = i + 1;
             for (; j < file_size; ++j) {
                 char x = chars[j];
-                if ((x == ' ') || (x == '\t') || (x == '\n')) {
+                if ((x == ' ') || (x == '\t')) {
+                    break;
+                } else if (x == '\n') {
+                    ++lines;
                     break;
                 }
             }
+            if ((COUNT_BUFFER - 1) < (j - i)) {
+                fprintf(stderr, "[ERROR] String literal too large\n");
+                exit(EXIT_FAILURE);
+            }
             char* buffer = memory->buffer;
-            u16   k = 0;
+            u8    k = 0;
             for (; i < j; ++i) {
                 buffer[k++] = chars[i];
             }
             buffer[k] = '\0';
             if (('0' <= buffer[0]) && (buffer[0] <= '9')) {
-                Token* token = alloc_token(memory);
                 token->tag = TOKEN_NUMBER;
-                if ((1 < k) && (buffer[1] == 'x')) {
-                    if (k == 2) {
-                        fprintf(stderr, "[ERROR] Unable to parse hex\n");
-                        exit(EXIT_FAILURE);
-                    }
-                    token->number = get_hex(&buffer[2]);
-                } else {
-                    token->number = get_decimal(buffer);
-                }
+                token->number = get_number(buffer, k);
             } else if (!strcmp(buffer, "minor_version")) {
-                Token* token = alloc_token(memory);
                 token->tag = TOKEN_MINOR_VERSION;
             } else if (!strcmp(buffer, "major_version")) {
-                Token* token = alloc_token(memory);
                 token->tag = TOKEN_MAJOR_VERSION;
             }
         }
@@ -161,20 +178,28 @@ static void set_tokens(Memory* memory) {
     }
 }
 
+#define TOKEN_FMT_LINE "%-4u"
+
 static void print_tokens(Memory* memory) {
     for (u32 i = 0; i < memory->token_index; ++i) {
         Token token = memory->tokens[i];
         switch (token.tag) {
         case TOKEN_MAJOR_VERSION: {
-            printf("TOKEN_MAJOR_VERSION\n");
+            printf(TOKEN_FMT_LINE "TOKEN_MAJOR_VERSION\n", token.line);
             break;
         }
         case TOKEN_MINOR_VERSION: {
-            printf("TOKEN_MINOR_VERSION\n");
+            printf(TOKEN_FMT_LINE "TOKEN_MINOR_VERSION\n", token.line);
             break;
         }
         case TOKEN_NUMBER: {
-            printf("TOKEN_NUMBER %u\n", token.number);
+            printf(TOKEN_FMT_LINE "TOKEN_NUMBER %d\n",
+                   token.line,
+                   token.number);
+            break;
+        }
+        case TOKEN_MINUS: {
+            printf(TOKEN_FMT_LINE "TOKEN_MINUS\n", token.line);
             break;
         }
         }

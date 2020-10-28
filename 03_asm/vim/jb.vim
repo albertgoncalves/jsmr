@@ -7,16 +7,16 @@ if exists("b:current_syntax")
 endif
 
 syn match Comment ";.*$"
-syn match Number "[0-9]\+"
-syn match Number "0x[0-9A-Fa-f]\+"
+syn match Number "\-\?[0-9]\+"
+syn match Number "\-\?0x[0-9A-Fa-f]\+"
 syn keyword Keyword
-    \ minor_version
-    \ major_version
-    \ this_class
-    \ super_class
     \ access_flags
-    \ constants
-    \ method
-    \ name_index
-    \ descriptor_index
     \ code
+    \ constants
+    \ descriptor_index
+    \ major_version
+    \ method
+    \ minor_version
+    \ name_index
+    \ super_class
+    \ this_class
