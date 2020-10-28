@@ -6,7 +6,7 @@ fi
 
 export WD=$PWD
 
-for x in 01_hello_world 02_disasm; do
+for x in 01_hello_world 02_disasm 03_asm; do
     for y in bin out; do
         if [ ! -d "$WD/$x/$y" ]; then
             mkdir "$WD/$x/$y"

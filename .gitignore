@@ -10,3 +10,7 @@
 !main
 !01_hello_world/
 !02_disasm/
+!03_asm/
+!*.jb
+!vim/
+!*.vim

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+read -a flags <<< "$FLAGS"
+wd="$WD/03_asm"
+
+cppcheck \
+    --enable=all \
+    --suppress=missingIncludeSystem \
+    "$wd/src" \
+    | sed 's/\/.*\/\(.*\) \.\.\./\1/g'
+clang-format -i -verbose "$wd/src"/*.c 2>&1 | sed 's/\/.*\///g'
+
+start=$(now)
+gcc -g -o "$wd/bin/main" "${flags[@]}" "$wd/src/main.c"
+end=$(now)
+python3 -c "print(\"Compiled! ({:.3f}s)\n\".format(${end} - ${start}))"
+
+"$wd/bin/main" "$wd/src/main.jb" "$wd/out/Main.class"
