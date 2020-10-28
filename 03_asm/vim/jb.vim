@@ -7,8 +7,8 @@ if exists("b:current_syntax")
 endif
 
 syn match Comment ";.*$"
-syn match Number "\d\+"
-syn match Number "0x\d\+"
+syn match Number "[0-9]\+"
+syn match Number "0x[0-9A-Fa-f]\+"
 syn keyword Keyword
     \ minor_version
     \ major_version
