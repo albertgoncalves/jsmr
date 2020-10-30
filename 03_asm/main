@@ -5,12 +5,16 @@ set -euo pipefail
 read -a flags <<< "$FLAGS"
 wd="$WD/03_asm"
 
+for x in "$wd"/src/*.h; do
+    cppcheck "$x" | sed 's/\/.*\/\(.*\) \.\.\./\1/g'
+done
 cppcheck \
     --enable=all \
     --suppress=missingIncludeSystem \
     "$wd/src" \
     | sed 's/\/.*\/\(.*\) \.\.\./\1/g'
 clang-format -i -verbose "$wd/src"/*.c 2>&1 | sed 's/\/.*\///g'
+clang-format -i -verbose "$wd/src"/*.h 2>&1 | sed 's/\/.*\///g'
 
 start=$(now)
 gcc -g -o "$wd/bin/main" "${flags[@]}" "$wd/src/main.c"
