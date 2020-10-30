@@ -9,7 +9,7 @@ endif
 syn match Comment ";.*$"
 syn match Number "\-\?[0-9]\+"
 syn match Number "\-\?0x[0-9A-Fa-f]\+"
-syn keyword Keyword
+syn keyword Statement
     \ access_flags
     \ code
     \ constants
@@ -20,3 +20,13 @@ syn keyword Keyword
     \ name_index
     \ super_class
     \ this_class
+syn keyword Keyword
+    \ abstract
+    \ annotation
+    \ enum
+    \ final
+    \ interface
+    \ module
+    \ public
+    \ super
+    \ synthetic

@@ -1,11 +1,11 @@
 major_version   58
 minor_version   0
+access_flags {
+    super
+}
+
 ; this_class      ?
 ; super_class     ?
-;
-; access_flags {
-;     ?
-; }
 ;
 ; constants {
 ;     ?
