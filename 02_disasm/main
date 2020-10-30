@@ -5,6 +5,9 @@ set -euo pipefail
 read -a flags <<< "$FLAGS"
 wd="$WD/02_disasm"
 
+for x in "$wd"/src/*.h; do
+    cppcheck "$x" | sed 's/\/.*\/\(.*\) \.\.\./\1/g'
+done
 cppcheck \
     --enable=all \
     --suppress=missingIncludeSystem \
