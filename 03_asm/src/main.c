@@ -122,7 +122,7 @@ static Token* alloc_token(Memory* memory) {
 }
 
 static char* alloc_buffer(Memory* memory, u32 size) {
-    if (SIZE_BUFFER <= (memory->buffer_size + size)) {
+    if (SIZE_BUFFER < (memory->buffer_size + size)) {
         ERROR("Unable to allocate new buffer");
     }
     char* buffer = &memory->buffer[memory->buffer_size];
@@ -271,6 +271,7 @@ static void set_tokens(Memory* memory) {
             } else if (is_quote(buffer, k)) {
                 token->tag = TOKEN_STRING;
                 token->buffer = &buffer[1];
+                buffer[0] = '\0';
                 buffer[k - 1] = '\0';
             } else if (!strcmp(buffer, "access_flags")) {
                 token->tag = TOKEN_ACCESS_FLAGS;
