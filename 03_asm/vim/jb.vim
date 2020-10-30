@@ -26,6 +26,8 @@ hi link Flags Statement
 
 syn keyword Constants
     \ class
+    \ name_and_type
+    \ string
 syn keyword Fields
     \ access_flags
     \ constants

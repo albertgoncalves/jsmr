@@ -3,7 +3,7 @@
 #include "program.h"
 #include "tokens.h"
 
-#define SIZE_FILE       512
+#define SIZE_FILE       1024
 #define SIZE_BUFFER     512
 #define COUNT_TOKENS    128
 #define COUNT_CONSTANTS 64
@@ -114,13 +114,25 @@ static void set_tokens(Memory* memory) {
             Token* token = alloc_token(memory);
             token->line = lines;
             u32 j = i + 1;
-            for (; j < file_size; ++j) {
-                char x = file[j];
-                if ((x == ' ') || (x == '\t')) {
-                    break;
-                } else if (x == '\n') {
-                    ++lines;
-                    break;
+            if (file[i] == '"') {
+                for (; j < file_size; ++j) {
+                    char x = file[j];
+                    if (x == '"') {
+                        ++j;
+                        break;
+                    } else if (x == '\n') {
+                        ++lines;
+                    }
+                }
+            } else {
+                for (; j < file_size; ++j) {
+                    char x = file[j];
+                    if ((x == ' ') || (x == '\t') || (x == ';')) {
+                        break;
+                    } else if (x == '\n') {
+                        ++lines;
+                        break;
+                    }
                 }
             }
             char* buffer = alloc_buffer(memory, (j - i) + 1);
@@ -141,7 +153,7 @@ static void set_tokens(Memory* memory) {
                     token->number = get_decimal(buffer);
                 }
             } else if (is_quote(buffer, k)) {
-                token->tag = TOKEN_STRING;
+                token->tag = TOKEN_QUOTE;
                 token->buffer = &buffer[1];
                 buffer[0] = '\0';
                 buffer[k - 1] = '\0';
@@ -155,8 +167,16 @@ static void set_tokens(Memory* memory) {
                 token->tag = TOKEN_MAJOR_VERSION;
             } else if (!strcmp(buffer, "minor_version")) {
                 token->tag = TOKEN_MINOR_VERSION;
+            } else if (!strcmp(buffer, "name_and_type")) {
+                token->tag = TOKEN_NAME_AND_TYPE;
+            } else if (!strcmp(buffer, "string")) {
+                token->tag = TOKEN_STRING;
             } else if (!strcmp(buffer, "super")) {
                 token->tag = TOKEN_SUPER;
+            } else if (!strcmp(buffer, "super_class")) {
+                token->tag = TOKEN_SUPER_CLASS;
+            } else if (!strcmp(buffer, "this_class")) {
+                token->tag = TOKEN_THIS_CLASS;
             } else {
                 token->tag = TOKEN_IDENT;
             }
@@ -212,6 +232,14 @@ static void set_minor_version(Memory* memory) {
     memory->program.minor_version = (u16)get_unsigned(memory);
 }
 
+static u32 pop_number(Memory* memory) {
+    Token token = pop_token(memory);
+    if (token.tag != TOKEN_NUMBER) {
+        UNEXPECTED_TOKEN("pop_number", token.buffer, token.line);
+    }
+    return token.number;
+}
+
 static void set_constants(Memory* memory) {
     Token token = pop_token(memory);
     if (token.tag != TOKEN_CONSTANTS) {
@@ -228,16 +256,21 @@ static void set_constants(Memory* memory) {
         if (memory->program.constants == NULL) {
             memory->program.constants = constant;
         }
-        if (token.tag == TOKEN_STRING) {
+        if (token.tag == TOKEN_CLASS) {
+            constant->tag = CONST_CLASS;
+            constant->name_index = (u16)pop_number(memory);
+        } else if (token.tag == TOKEN_NAME_AND_TYPE) {
+            constant->tag = CONST_NAME_AND_TYPE;
+            constant->name_and_type.name_index = (u16)pop_number(memory);
+            constant->name_and_type.type_index = (u16)pop_number(memory);
+        } else if (token.tag == TOKEN_STRING) {
+            constant->tag = CONST_STRING;
+            constant->string_index = (u16)pop_number(memory);
+        } else if (token.tag == TOKEN_QUOTE) {
             constant->tag = CONST_UTF8;
             constant->string = token.buffer;
-        } else if (token.tag == TOKEN_CLASS) {
-            constant->tag = CONST_CLASS;
-            token = pop_token(memory);
-            if (token.tag != TOKEN_NUMBER) {
-                UNEXPECTED_TOKEN("set_constants", token.buffer, token.line);
-            }
-            constant->name_index = (u16)token.number;
+        } else {
+            UNEXPECTED_TOKEN("set_constants", token.buffer, token.line);
         }
     }
     memory->program.constant_count = (u16)(memory->constant_count + 1);
@@ -278,11 +311,29 @@ static void set_access_flags(Memory* memory) {
     }
 }
 
+static void set_this_class(Memory* memory) {
+    Token token = pop_token(memory);
+    if (token.tag != TOKEN_THIS_CLASS) {
+        UNEXPECTED_TOKEN("set_this_class", token.buffer, token.line);
+    }
+    memory->program.this_class = (u16)get_unsigned(memory);
+}
+
+static void set_super_class(Memory* memory) {
+    Token token = pop_token(memory);
+    if (token.tag != TOKEN_SUPER_CLASS) {
+        UNEXPECTED_TOKEN("set_super_class", token.buffer, token.line);
+    }
+    memory->program.super_class = (u16)get_unsigned(memory);
+}
+
 static void set_program(Memory* memory) {
     set_major_version(memory);
     set_minor_version(memory);
     set_constants(memory);
     set_access_flags(memory);
+    set_this_class(memory);
+    set_super_class(memory);
 }
 
 i32 main(i32 n, const char** args) {
@@ -302,17 +353,8 @@ i32 main(i32 n, const char** args) {
     set_file_to_chars(memory, args[1]);
     set_tokens(memory);
     set_program(memory);
-    printf("memory->file_size              : %u\n"
-           "memory->program.major_version  : %hu\n"
-           "memory->program.minor_version  : %hu\n"
-           "memory->program.access_flags   : 0x%X\n"
-           "memory->program.constant_count : %hu\n"
-           "Done!\n",
-           memory->file_size,
-           memory->program.major_version,
-           memory->program.minor_version,
-           memory->program.access_flags,
-           memory->program.constant_count);
+    print_program(&memory->program);
+    printf("\nDone!\n");
     free(memory);
     return EXIT_SUCCESS;
 }
