@@ -9,18 +9,9 @@ endif
 syn match Comment ";.*$"
 syn match Number "\-\?[0-9]\+"
 syn match Number "\-\?0x[0-9A-Fa-f]\+"
-syn keyword Statement
-    \ access_flags
-    \ code
-    \ constants
-    \ descriptor_index
-    \ major_version
-    \ method
-    \ minor_version
-    \ name_index
-    \ super_class
-    \ this_class
-syn keyword Keyword
+syn match String "\".*\""
+
+syn keyword Flags
     \ abstract
     \ annotation
     \ enum
@@ -30,3 +21,24 @@ syn keyword Keyword
     \ public
     \ super
     \ synthetic
+
+hi link Flags Statement
+
+syn keyword Constants
+    \ class
+syn keyword Fields
+    \ access_flags
+    \ constants
+    \ major_version
+    \ method
+    \ minor_version
+    \ super_class
+    \ this_class
+syn keyword MethodFields
+    \ code
+    \ descriptor_index
+    \ name_index
+
+hi link Constants Keyword
+hi link Fields Keyword
+hi link MethodFields Keyword

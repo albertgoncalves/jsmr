@@ -11,60 +11,79 @@ typedef uint32_t u32;
 
 typedef int32_t i32;
 
-#define COUNT_CHARS  512
-#define COUNT_BUFFER 24
-#define COUNT_TOKENS 128
-
-// typedef enum {
-//     FALSE = 0,
-//     TRUE,
-// } Bool;
+#define SIZE_FILE       512
+#define SIZE_BUFFER     512
+#define COUNT_TOKENS    128
+#define COUNT_CONSTANTS 64
 
 typedef enum {
+    FALSE = 0,
+    TRUE,
+} Bool;
+
+typedef enum {
+    TOKEN_ABSTRACT,
+    TOKEN_ACCESS_FLAGS,
+    TOKEN_ANNOTATION,
+    TOKEN_CLASS,
+    TOKEN_CONSTANTS,
+    TOKEN_ENUM,
+    TOKEN_FINAL,
+    TOKEN_IDENT,
+    TOKEN_INTERFACE,
+    TOKEN_LBRACE,
     TOKEN_MAJOR_VERSION,
     TOKEN_MINOR_VERSION,
-    TOKEN_NUMBER,
     TOKEN_MINUS,
-    TOKEN_UNKNOWN,
-    TOKEN_LBRACE,
+    TOKEN_MODULE,
+    TOKEN_NUMBER,
+    TOKEN_PUBLIC,
+    TOKEN_QUOTE,
     TOKEN_RBRACE,
-    TOKEN_ACCESS_FLAGS,
-    TOKEN_ACCESS_FLAG_PUBLIC,
-    TOKEN_ACCESS_FLAG_FINAL,
-    TOKEN_ACCESS_FLAG_SUPER,
-    TOKEN_ACCESS_FLAG_INTERFACE,
-    TOKEN_ACCESS_FLAG_ABSTRACT,
-    TOKEN_ACCESS_FLAG_SYNTHETIC,
-    TOKEN_ACCESS_FLAG_ANNOTATION,
-    TOKEN_ACCESS_FLAG_ENUM,
-    TOKEN_ACCESS_FLAG_MODULE,
+    TOKEN_STRING,
+    TOKEN_SUPER,
+    TOKEN_SYNTHETIC,
 } TokenTag;
 
 typedef struct {
     const char* buffer;
-    union {
-        u32 number;
-    };
-    u32      line;
-    TokenTag tag;
+    u32         number;
+    u32         line;
+    TokenTag    tag;
 } Token;
 
+typedef enum {
+    CONST_CLASS,
+    CONST_UTF8,
+} ConstantTag;
+
 typedef struct {
-    u16 major_version;
-    u16 minor_version;
-    // constant_pool_count;
-    // constants;
-    u16 access_flags;
+    union {
+        const char* string;
+        u16         name_index;
+    };
+    ConstantTag tag;
+} Constant;
+
+typedef struct {
+    u16             major_version;
+    u16             minor_version;
+    u16             constant_count;
+    const Constant* constants;
+    u16             access_flags;
 } Program;
 
 typedef struct {
-    u32     file_size;
-    char    chars[COUNT_CHARS];
-    char    buffer[COUNT_BUFFER];
-    u32     token_index;
-    u32     token_count;
-    Token   tokens[COUNT_TOKENS];
-    Program program;
+    u32      file_size;
+    char     file[SIZE_FILE];
+    u32      buffer_size;
+    char     buffer[SIZE_BUFFER];
+    u32      token_index;
+    u32      token_count;
+    Token    tokens[COUNT_TOKENS];
+    u32      constant_count;
+    Constant constants[COUNT_CONSTANTS];
+    Program  program;
 } Memory;
 
 static const char* BUFFER_MINUS = "-";
@@ -85,10 +104,10 @@ static void set_file_to_chars(Memory* memory, const char* filename) {
     fseek(file, 0, SEEK_END);
     u32 file_size = (u32)ftell(file);
     rewind(file);
-    if (COUNT_CHARS < file_size) {
+    if (SIZE_FILE < file_size) {
         ERROR("File does not fit into memory");
     }
-    if (fread(&memory->chars, sizeof(char), file_size, file) != file_size) {
+    if (fread(&memory->file, sizeof(char), file_size, file) != file_size) {
         ERROR("`fread` failed");
     }
     memory->file_size = file_size;
@@ -100,6 +119,22 @@ static Token* alloc_token(Memory* memory) {
         ERROR("Unable to allocate new token");
     }
     return &memory->tokens[memory->token_count++];
+}
+
+static char* alloc_buffer(Memory* memory, u32 size) {
+    if (SIZE_BUFFER <= (memory->buffer_size + size)) {
+        ERROR("Unable to allocate new buffer");
+    }
+    char* buffer = &memory->buffer[memory->buffer_size];
+    memory->buffer_size += size;
+    return buffer;
+}
+
+static Constant* alloc_constant(Memory* memory) {
+    if (COUNT_CONSTANTS <= memory->constant_count) {
+        ERROR("Unable to allocate new constant");
+    }
+    return &memory->constants[memory->constant_count++];
 }
 
 #define UNEXPECTED_TOKEN(function, buffer, line)                             \
@@ -147,12 +182,24 @@ static u32 get_hex(const char* hex) {
     return result;
 }
 
+static Bool is_quote(const char* buffer, u32 size) {
+    if ((buffer[0] != '"') || (buffer[size - 1] != '"')) {
+        return FALSE;
+    }
+    for (u32 i = 1; i < size - 1; ++i) {
+        if (buffer[i] == '"') {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
 static void set_tokens(Memory* memory) {
-    const char* chars = memory->chars;
+    const char* file = memory->file;
     u32         file_size = (u32)memory->file_size;
     u32         lines = 1;
     for (u32 i = 0; i < file_size; ++i) {
-        switch (chars[i]) {
+        switch (file[i]) {
         case ' ':
         case '\t': {
             break;
@@ -163,7 +210,7 @@ static void set_tokens(Memory* memory) {
         }
         case ';': {
             for (; i < file_size; ++i) {
-                if (chars[i] == '\n') {
+                if (file[i] == '\n') {
                     ++lines;
                     break;
                 }
@@ -196,7 +243,7 @@ static void set_tokens(Memory* memory) {
             token->line = lines;
             u32 j = i + 1;
             for (; j < file_size; ++j) {
-                char x = chars[j];
+                char x = file[j];
                 if ((x == ' ') || (x == '\t')) {
                     break;
                 } else if (x == '\n') {
@@ -204,14 +251,11 @@ static void set_tokens(Memory* memory) {
                     break;
                 }
             }
-            if ((COUNT_BUFFER - 1) < (j - i)) {
-                ERROR("String literal too large");
-            }
-            char* buffer = memory->buffer;
+            char* buffer = alloc_buffer(memory, (j - i) + 1);
             token->buffer = buffer;
-            u8 k = 0;
-            for (; i < j; ++i) {
-                buffer[k++] = chars[i];
+            u32 k = 0;
+            while (i < j) {
+                buffer[k++] = file[i++];
             }
             buffer[k] = '\0';
             if (('0' <= buffer[0]) && (buffer[0] <= '9')) {
@@ -224,16 +268,24 @@ static void set_tokens(Memory* memory) {
                 } else {
                     token->number = get_decimal(buffer);
                 }
-            } else if (!strcmp(buffer, "minor_version")) {
-                token->tag = TOKEN_MINOR_VERSION;
-            } else if (!strcmp(buffer, "major_version")) {
-                token->tag = TOKEN_MAJOR_VERSION;
+            } else if (is_quote(buffer, k)) {
+                token->tag = TOKEN_STRING;
+                token->buffer = &buffer[1];
+                buffer[k - 1] = '\0';
             } else if (!strcmp(buffer, "access_flags")) {
                 token->tag = TOKEN_ACCESS_FLAGS;
+            } else if (!strcmp(buffer, "class")) {
+                token->tag = TOKEN_CLASS;
+            } else if (!strcmp(buffer, "constants")) {
+                token->tag = TOKEN_CONSTANTS;
+            } else if (!strcmp(buffer, "major_version")) {
+                token->tag = TOKEN_MAJOR_VERSION;
+            } else if (!strcmp(buffer, "minor_version")) {
+                token->tag = TOKEN_MINOR_VERSION;
             } else if (!strcmp(buffer, "super")) {
-                token->tag = TOKEN_ACCESS_FLAG_SUPER;
+                token->tag = TOKEN_SUPER;
             } else {
-                UNEXPECTED_TOKEN("set_tokens", buffer, lines);
+                token->tag = TOKEN_IDENT;
             }
         }
         }
@@ -287,6 +339,37 @@ static void set_minor_version(Memory* memory) {
     memory->program.minor_version = (u16)get_unsigned(memory);
 }
 
+static void set_constants(Memory* memory) {
+    Token token = pop_token(memory);
+    if (token.tag != TOKEN_CONSTANTS) {
+        UNEXPECTED_TOKEN("set_constants", token.buffer, token.line);
+    }
+    token = pop_token(memory);
+    if (token.tag != TOKEN_LBRACE) {
+        UNEXPECTED_TOKEN("set_constants", token.buffer, token.line);
+    }
+    token = pop_token(memory);
+    memory->program.constants = NULL;
+    for (; token.tag != TOKEN_RBRACE; token = pop_token(memory)) {
+        Constant* constant = alloc_constant(memory);
+        if (memory->program.constants == NULL) {
+            memory->program.constants = constant;
+        }
+        if (token.tag == TOKEN_STRING) {
+            constant->tag = CONST_UTF8;
+            constant->string = token.buffer;
+        } else if (token.tag == TOKEN_CLASS) {
+            constant->tag = CONST_CLASS;
+            token = pop_token(memory);
+            if (token.tag != TOKEN_NUMBER) {
+                UNEXPECTED_TOKEN("set_constants", token.buffer, token.line);
+            }
+            constant->name_index = (u16)token.number;
+        }
+    }
+    memory->program.constant_count = (u16)(memory->constant_count + 1);
+}
+
 static void set_access_flags(Memory* memory) {
     Token token = pop_token(memory);
     if (token.tag != TOKEN_ACCESS_FLAGS) {
@@ -298,23 +381,23 @@ static void set_access_flags(Memory* memory) {
     };
     token = pop_token(memory);
     for (; token.tag != TOKEN_RBRACE; token = pop_token(memory)) {
-        if (token.tag == TOKEN_ACCESS_FLAG_PUBLIC) {
+        if (token.tag == TOKEN_PUBLIC) {
             memory->program.access_flags |= 0x0001;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_FINAL) {
+        } else if (token.tag == TOKEN_FINAL) {
             memory->program.access_flags |= 0x0010;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_SUPER) {
+        } else if (token.tag == TOKEN_SUPER) {
             memory->program.access_flags |= 0x0020;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_INTERFACE) {
+        } else if (token.tag == TOKEN_INTERFACE) {
             memory->program.access_flags |= 0x0200;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_ABSTRACT) {
+        } else if (token.tag == TOKEN_ABSTRACT) {
             memory->program.access_flags |= 0x0400;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_SYNTHETIC) {
+        } else if (token.tag == TOKEN_SYNTHETIC) {
             memory->program.access_flags |= 0x1000;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_ANNOTATION) {
+        } else if (token.tag == TOKEN_ANNOTATION) {
             memory->program.access_flags |= 0x2000;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_ENUM) {
+        } else if (token.tag == TOKEN_ENUM) {
             memory->program.access_flags |= 0x4000;
-        } else if (token.tag == TOKEN_ACCESS_FLAG_MODULE) {
+        } else if (token.tag == TOKEN_MODULE) {
             memory->program.access_flags |= 0x8000;
         } else {
             UNEXPECTED_TOKEN("set_access_flags", token.buffer, token.line);
@@ -325,15 +408,18 @@ static void set_access_flags(Memory* memory) {
 static void set_program(Memory* memory) {
     set_major_version(memory);
     set_minor_version(memory);
+    set_constants(memory);
     set_access_flags(memory);
 }
 
 i32 main(i32 n, const char** args) {
-    printf("sizeof(Token)   : %zu\n"
-           "sizeof(Program) : %zu\n"
-           "sizeof(Memory)  : %zu\n"
+    printf("sizeof(Token)    : %zu\n"
+           "sizeof(Constant) : %zu\n"
+           "sizeof(Program)  : %zu\n"
+           "sizeof(Memory)   : %zu\n"
            "\n",
            sizeof(Token),
+           sizeof(Constant),
            sizeof(Program),
            sizeof(Memory));
     if (n < 3) {
@@ -343,15 +429,17 @@ i32 main(i32 n, const char** args) {
     set_file_to_chars(memory, args[1]);
     set_tokens(memory);
     set_program(memory);
-    printf("memory->file_size             : %u\n"
-           "memory->program.major_version : %hu\n"
-           "memory->program.minor_version : %hu\n"
-           "memory->program.access_flags  : 0x%X\n"
+    printf("memory->file_size              : %u\n"
+           "memory->program.major_version  : %hu\n"
+           "memory->program.minor_version  : %hu\n"
+           "memory->program.access_flags   : 0x%X\n"
+           "memory->program.constant_count : %hu\n"
            "Done!\n",
            memory->file_size,
            memory->program.major_version,
            memory->program.minor_version,
-           memory->program.access_flags);
+           memory->program.access_flags,
+           memory->program.constant_count);
     free(memory);
     return EXIT_SUCCESS;
 }

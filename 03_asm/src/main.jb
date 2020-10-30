@@ -1,15 +1,19 @@
-major_version   58
-minor_version   0
+major_version 58
+minor_version 0
+
+constants {
+    "Main"              ; 1
+    class 1             ; 2
+    "java/lang/Object"  ; 3
+    class 3             ; 4
+}
+
 access_flags {
     super
 }
 
 ; this_class      ?
 ; super_class     ?
-;
-; constants {
-;     ?
-; }
 ;
 ; method {
 ;     name_index          ?
