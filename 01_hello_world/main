@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-read -a flags <<< "$FLAGS"
+read -r -a flags <<< "$FLAGS"
 wd="$WD/01_hello_world"
 
 cppcheck \

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-read -a flags <<< "$FLAGS"
+read -r -a flags <<< "$FLAGS"
 wd="$WD/02_disasm"
 
 for x in "$wd"/src/*.h; do

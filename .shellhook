@@ -60,3 +60,5 @@ flags=(
 )
 
 export FLAGS="${flags[*]}"
+
+alias shellcheck="shellcheck --exclude=SC1090,SC2153"
