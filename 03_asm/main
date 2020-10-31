@@ -22,5 +22,5 @@ end=$(now)
 python3 -c "print(\"Compiled! ({:.3f}s)\n\".format(${end} - ${start}))"
 
 "$wd/bin/main" "$wd/src/main.jb" "$wd/out/Main.class"
-echo ""
-xxd "$wd/out/Main.class"
+printf "\n"
+java -cp .:"$wd/out" Main

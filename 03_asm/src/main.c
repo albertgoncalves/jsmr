@@ -11,6 +11,7 @@
 #define COUNT_OPS       16
 
 typedef struct {
+    Program  program;
     u32      file_size;
     char     file[SIZE_FILE];
     u32      buffer_size;
@@ -24,8 +25,6 @@ typedef struct {
     Method   methods[COUNT_METHODS];
     u16      op_count;
     Op       ops[COUNT_OPS];
-    u16      attribute_count;
-    Program  program;
 } Memory;
 
 static const char* BUFFER_MINUS = "-";
@@ -182,45 +181,45 @@ static void set_tokens(Memory* memory) {
                 buffer[0] = '\0';
                 buffer[k - 1] = '\0';
                 token->buffer = &buffer[1];
-            } else if (!strcmp(buffer, "access_flags")) {
+            } else if (get_eq(buffer, "access_flags")) {
                 token->tag = TOKEN_ACCESS_FLAGS;
-            } else if (!strcmp(buffer, "class")) {
+            } else if (get_eq(buffer, "class")) {
                 token->tag = TOKEN_CLASS;
-            } else if (!strcmp(buffer, "code")) {
+            } else if (get_eq(buffer, "code")) {
                 token->tag = TOKEN_CODE;
-            } else if (!strcmp(buffer, "constants")) {
+            } else if (get_eq(buffer, "constants")) {
                 token->tag = TOKEN_CONSTANTS;
-            } else if (!strcmp(buffer, "field_ref")) {
+            } else if (get_eq(buffer, "field_ref")) {
                 token->tag = TOKEN_FIELD_REF;
-            } else if (!strcmp(buffer, "major_version")) {
+            } else if (get_eq(buffer, "major_version")) {
                 token->tag = TOKEN_MAJOR_VERSION;
-            } else if (!strcmp(buffer, "max_local")) {
+            } else if (get_eq(buffer, "max_local")) {
                 token->tag = TOKEN_MAX_LOCAL;
-            } else if (!strcmp(buffer, "max_stack")) {
+            } else if (get_eq(buffer, "max_stack")) {
                 token->tag = TOKEN_MAX_STACK;
-            } else if (!strcmp(buffer, "method")) {
+            } else if (get_eq(buffer, "method")) {
                 token->tag = TOKEN_METHOD;
-            } else if (!strcmp(buffer, "method_ref")) {
+            } else if (get_eq(buffer, "method_ref")) {
                 token->tag = TOKEN_METHOD_REF;
-            } else if (!strcmp(buffer, "minor_version")) {
+            } else if (get_eq(buffer, "minor_version")) {
                 token->tag = TOKEN_MINOR_VERSION;
-            } else if (!strcmp(buffer, "name_and_type")) {
+            } else if (get_eq(buffer, "name_and_type")) {
                 token->tag = TOKEN_NAME_AND_TYPE;
-            } else if (!strcmp(buffer, "name_index")) {
+            } else if (get_eq(buffer, "name_index")) {
                 token->tag = TOKEN_NAME_INDEX;
-            } else if (!strcmp(buffer, "PUBLIC")) {
+            } else if (get_eq(buffer, "PUBLIC")) {
                 token->tag = TOKEN_ACC_PUBLIC;
-            } else if (!strcmp(buffer, "STATIC")) {
+            } else if (get_eq(buffer, "STATIC")) {
                 token->tag = TOKEN_ACC_STATIC;
-            } else if (!strcmp(buffer, "string")) {
+            } else if (get_eq(buffer, "string")) {
                 token->tag = TOKEN_STRING;
-            } else if (!strcmp(buffer, "SUPER")) {
+            } else if (get_eq(buffer, "SUPER")) {
                 token->tag = TOKEN_ACC_SUPER;
-            } else if (!strcmp(buffer, "super_class")) {
+            } else if (get_eq(buffer, "super_class")) {
                 token->tag = TOKEN_SUPER_CLASS;
-            } else if (!strcmp(buffer, "this_class")) {
+            } else if (get_eq(buffer, "this_class")) {
                 token->tag = TOKEN_THIS_CLASS;
-            } else if (!strcmp(buffer, "type_index")) {
+            } else if (get_eq(buffer, "type_index")) {
                 token->tag = TOKEN_TYPE_INDEX;
             } else {
                 token->tag = TOKEN_UNKNOWN;
@@ -388,17 +387,17 @@ static void set_method_code(Memory* memory, Method* method) {
         if (token.tag == TOKEN_OP) {
             ++method->code.op_count;
             Op* op = alloc_op(memory);
-            if (!strcmp(token.buffer, "ldc")) {
+            if (get_eq(token.buffer, "ldc")) {
                 op->tag = OP_LDC;
-                op->arg = (u16)get_unsigned(memory);
-            } else if (!strcmp(token.buffer, "return")) {
+                op->u8 = (u8)get_unsigned(memory);
+            } else if (get_eq(token.buffer, "return")) {
                 op->tag = OP_RETURN;
-            } else if (!strcmp(token.buffer, "getstatic")) {
+            } else if (get_eq(token.buffer, "getstatic")) {
                 op->tag = OP_GETSTATIC;
-                op->arg = (u16)get_unsigned(memory);
-            } else if (!strcmp(token.buffer, "invokevirtual")) {
+                op->u16 = (u16)get_unsigned(memory);
+            } else if (get_eq(token.buffer, "invokevirtual")) {
                 op->tag = OP_INVOKEVIRTUAL;
-                op->arg = (u16)get_unsigned(memory);
+                op->u16 = (u16)get_unsigned(memory);
             } else {
                 UNEXPECTED_TOKEN(token.buffer, token.line);
             }
@@ -421,7 +420,6 @@ static void set_methods(Memory* memory) {
         EXPECTED_TOKEN(TOKEN_TYPE_INDEX, memory);
         method->type_index = (u16)get_unsigned(memory);
         set_method_code(memory, method);
-        ++method->attribute_count;
         EXPECTED_TOKEN(TOKEN_RBRACE, memory);
     }
     memory->program.method_count = memory->method_count;
@@ -476,7 +474,7 @@ i32 main(i32 n, const char** args) {
     set_program(memory);
     print_program(&memory->program);
     serialize_program(&memory->program, args[2]);
-    printf("\nDone!\n");
+    printf("Done!\n");
     free(memory);
     return EXIT_SUCCESS;
 }
