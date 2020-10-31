@@ -9,23 +9,27 @@ endif
 syn match Comment ";.*$"
 syn match Number "\-\?[0-9]\+"
 syn match Number "\-\?0x[0-9A-Fa-f]\+"
-syn match String "\".*\""
+syn match String "\"[^\"]*\"\?"
+syn match Function "\.[^ ]\+"
 
 syn keyword Flags
-    \ abstract
-    \ annotation
-    \ enum
-    \ final
-    \ interface
-    \ module
-    \ public
-    \ super
-    \ synthetic
+    \ ABSTRACT
+    \ ANNOTATION
+    \ ENUM
+    \ FINAL
+    \ INTERFACE
+    \ MODULE
+    \ PUBLIC
+    \ STATIC
+    \ SUPER
+    \ SYNTHETIC
 
 hi link Flags Statement
 
 syn keyword Constants
     \ class
+    \ field_ref
+    \ method_ref
     \ name_and_type
     \ string
 syn keyword Fields
@@ -36,11 +40,15 @@ syn keyword Fields
     \ minor_version
     \ super_class
     \ this_class
+syn keyword CodeFields
+    \ max_local
+    \ max_stack
 syn keyword MethodFields
     \ code
-    \ descriptor_index
     \ name_index
+    \ type_index
 
+hi link CodeFields Keyword
 hi link Constants Keyword
 hi link Fields Keyword
 hi link MethodFields Keyword

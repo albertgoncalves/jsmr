@@ -2,30 +2,42 @@
 #define __TOKENS_H__
 
 typedef enum {
-    TOKEN_ABSTRACT,
+    TOKEN_ACC_ABSTRACT,
+    TOKEN_ACC_ANNOTATION,
+    TOKEN_ACC_ENUM,
     TOKEN_ACCESS_FLAGS,
-    TOKEN_ANNOTATION,
+    TOKEN_ACC_FINAL,
+    TOKEN_ACC_INTERFACE,
+    TOKEN_ACC_MODULE,
+    TOKEN_ACC_PUBLIC,
+    TOKEN_ACC_STATIC,
+    TOKEN_ACC_SUPER,
+    TOKEN_ACC_SYNTHETIC,
+    TOKEN_ATTRIBUTE,
     TOKEN_CLASS,
+    TOKEN_CODE,
     TOKEN_CONSTANTS,
-    TOKEN_ENUM,
-    TOKEN_FINAL,
-    TOKEN_IDENT,
+    TOKEN_FIELD_REF,
     TOKEN_INTERFACE,
     TOKEN_LBRACE,
     TOKEN_MAJOR_VERSION,
+    TOKEN_MAX_LOCAL,
+    TOKEN_MAX_STACK,
+    TOKEN_METHOD,
+    TOKEN_METHOD_REF,
     TOKEN_MINOR_VERSION,
     TOKEN_MINUS,
-    TOKEN_MODULE,
     TOKEN_NAME_AND_TYPE,
+    TOKEN_NAME_INDEX,
     TOKEN_NUMBER,
-    TOKEN_PUBLIC,
+    TOKEN_OP,
     TOKEN_QUOTE,
     TOKEN_RBRACE,
     TOKEN_STRING,
-    TOKEN_SUPER,
     TOKEN_SUPER_CLASS,
-    TOKEN_SYNTHETIC,
     TOKEN_THIS_CLASS,
+    TOKEN_TYPE_INDEX,
+    TOKEN_UNKNOWN,
 } TokenTag;
 
 typedef struct {
@@ -35,13 +47,22 @@ typedef struct {
     TokenTag    tag;
 } Token;
 
-#define UNEXPECTED_TOKEN(function, buffer, line)                             \
-    {                                                                        \
-        fprintf(stderr,                                                      \
-                "[ERROR] `" function "` unexpected token \"%s\" (ln. %u)\n", \
-                buffer,                                                      \
-                line);                                                       \
-        exit(EXIT_FAILURE);                                                  \
+#define UNEXPECTED_TOKEN(buffer, line)                             \
+    {                                                              \
+        fprintf(stderr,                                            \
+                "[ERROR] `%s` unexpected token \"%s\" (ln. %u)\n", \
+                __func__,                                          \
+                buffer,                                            \
+                line);                                             \
+        exit(EXIT_FAILURE);                                        \
+    }
+
+#define EXPECTED_TOKEN(token_tag, memory)               \
+    {                                                   \
+        Token token = pop_token(memory);                \
+        if (token.tag != token_tag) {                   \
+            UNEXPECTED_TOKEN(token.buffer, token.line); \
+        }                                               \
     }
 
 static u32 get_decimal(const char* decimal) {

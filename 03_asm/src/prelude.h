@@ -25,4 +25,10 @@ typedef enum {
         exit(EXIT_FAILURE);                       \
     }
 
+#define NOT_IMPLEMENTED                                              \
+    {                                                                \
+        fprintf(stderr, "[ERROR] `%s` not implemented\n", __func__); \
+        exit(EXIT_FAILURE);                                          \
+    }
+
 #endif
