@@ -3,23 +3,23 @@ minor_version 0
 
 constants {
     "Main"                      ;  1
-    class 1                     ;  2
+    class   1                   ;  2
     "java/lang/Object"          ;  3
-    class 3                     ;  4
+    class   3                   ;  4
     "java/lang/System"          ;  5
-    class 5                     ;  6
+    class   5                   ;  6
     "java/io/PrintStream"       ;  7
-    class 7                     ;  8
+    class   7                   ;  8
     "Hello, world!"             ;  9
-    string 9                    ; 10
+    string  9                   ; 10
     "out"                       ; 11
     "Ljava/io/PrintStream;"     ; 12
-    name_and_type 11 12         ; 13
-    field_ref 6 13              ; 14
+    name_and_type   11  12      ; 13
+    field_ref       6   13      ; 14
     "println"                   ; 15
     "(Ljava/lang/String;)V"     ; 16
-    name_and_type 15 16         ; 17
-    method_ref 8 17             ; 18
+    name_and_type   15  16      ; 17
+    method_ref      8   17      ; 18
     "main"                      ; 19
     "([Ljava/lang/String;)V"    ; 20
     "Code"                      ; 21
