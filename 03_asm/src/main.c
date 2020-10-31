@@ -475,6 +475,7 @@ i32 main(i32 n, const char** args) {
     set_tokens(memory);
     set_program(memory);
     print_program(&memory->program);
+    serialize_program(&memory->program, args[2]);
     printf("\nDone!\n");
     free(memory);
     return EXIT_SUCCESS;

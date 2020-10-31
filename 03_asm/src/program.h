@@ -171,4 +171,29 @@ static void print_program(Program* program) {
     printf("\nprogram->attribute_count : %hu\n", program->attribute_count);
 }
 
+#define WRITE_ERROR ERROR("Unable to write to file")
+
+static void serialize_u32(File* file, u32 bytes) {
+    if (fwrite(&bytes, sizeof(u32), 1, file) != 1) {
+        WRITE_ERROR;
+    }
+}
+
+static void serialize_u16(File* file, u16 bytes) {
+    if (fwrite(&bytes, sizeof(u16), 1, file) != 1) {
+        WRITE_ERROR;
+    }
+}
+
+static void serialize_program(Program* program, const char* filename) {
+    File* file = fopen(filename, "wb");
+    if (file == NULL) {
+        ERROR("Unable to open file");
+    }
+    serialize_u32(file, __builtin_bswap32(0xCAFEBABE));
+    serialize_u16(file, __builtin_bswap16(program->minor_version));
+    serialize_u16(file, __builtin_bswap16(program->major_version));
+    fclose(file);
+}
+
 #endif

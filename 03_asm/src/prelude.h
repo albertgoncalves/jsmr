@@ -19,10 +19,10 @@ typedef enum {
     TRUE,
 } Bool;
 
-#define ERROR(message)                            \
-    {                                             \
-        fprintf(stderr, "[ERROR] " message "\n"); \
-        exit(EXIT_FAILURE);                       \
+#define ERROR(message)                                             \
+    {                                                              \
+        fprintf(stderr, "[ERROR] (`%s`) %s\n", __func__, message); \
+        exit(EXIT_FAILURE);                                        \
     }
 
 #define NOT_IMPLEMENTED                                              \
