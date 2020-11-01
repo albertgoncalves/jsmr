@@ -32,6 +32,7 @@ typedef struct {
 } Constant;
 
 typedef enum {
+    OP_ICONST0 = 3,
     OP_LDC = 18,
     OP_RETURN = 177,
     OP_GETSTATIC = 178,

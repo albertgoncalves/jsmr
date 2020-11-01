@@ -374,6 +374,8 @@ void set_method_code(Memory* memory, Method* method) {
             } else if (get_eq(token.buffer, "invokevirtual")) {
                 op->tag = OP_INVOKEVIRTUAL;
                 op->u16 = (u16)get_unsigned(memory);
+            } else if (get_eq(token.buffer, "iconst0")) {
+                op->tag = OP_ICONST0;
             } else {
                 UNEXPECTED_TOKEN(token.buffer, token.line);
             }

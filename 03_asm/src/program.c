@@ -183,6 +183,9 @@ u16 get_constant_utf8_index(Program* program, const char* utf8) {
 void serialize_op(File* file, Op op) {
     serialize_u8(file, (u8)op.tag);
     switch (op.tag) {
+    case OP_ICONST0: {
+        break;
+    }
     case OP_LDC: {
         serialize_u8(file, op.u8);
         break;
