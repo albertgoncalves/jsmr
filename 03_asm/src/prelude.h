@@ -19,16 +19,19 @@ typedef enum {
     TRUE,
 } Bool;
 
-#define ERROR(message)                                             \
-    {                                                              \
-        fprintf(stderr, "[ERROR] (`%s`) %s\n", __func__, message); \
-        exit(EXIT_FAILURE);                                        \
+#define ERROR(message)                                                       \
+    {                                                                        \
+        fprintf(stderr, "%s:%s\n[ERROR] %s\n", __FILE__, __func__, message); \
+        exit(EXIT_FAILURE);                                                  \
     }
 
-#define NOT_IMPLEMENTED                                              \
-    {                                                                \
-        fprintf(stderr, "[ERROR] `%s` not implemented\n", __func__); \
-        exit(EXIT_FAILURE);                                          \
+#define NOT_IMPLEMENTED                             \
+    {                                               \
+        fprintf(stderr,                             \
+                "%s:%s\n[ERROR] Not implemented\n", \
+                __FILE__,                           \
+                __func__);                          \
+        exit(EXIT_FAILURE);                         \
     }
 
 static u16 get_len(const char* x) {

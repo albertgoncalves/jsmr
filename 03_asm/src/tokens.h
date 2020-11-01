@@ -47,14 +47,15 @@ typedef struct {
     TokenTag    tag;
 } Token;
 
-#define UNEXPECTED_TOKEN(buffer, line)                             \
-    {                                                              \
-        fprintf(stderr,                                            \
-                "[ERROR] `%s` unexpected token \"%s\" (ln. %u)\n", \
-                __func__,                                          \
-                buffer,                                            \
-                line);                                             \
-        exit(EXIT_FAILURE);                                        \
+#define UNEXPECTED_TOKEN(buffer, line)                               \
+    {                                                                \
+        fprintf(stderr,                                              \
+                "%s:%s\n[ERROR] Unexpected token \"%s\" (ln. %u)\n", \
+                __FILE__,                                            \
+                __func__,                                            \
+                buffer,                                              \
+                line);                                               \
+        exit(EXIT_FAILURE);                                          \
     }
 
 #define EXPECTED_TOKEN(token_tag, memory)               \
