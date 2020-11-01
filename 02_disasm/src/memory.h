@@ -360,11 +360,17 @@ static u16 pop_u16(Memory* memory) {
     return bytes;
 }
 
-static u8 pop_u8_at(const u8* bytes, u32* index) {
+static u8 pop_u8_at(const u8* bytes, u32* index, u32 size) {
+    if (size < ((*index) + 1)) {
+        OUT_OF_BOUNDS;
+    }
     return bytes[(*index)++];
 }
 
-static u16 pop_u16_at(const u8* bytes, u32* index) {
+static u16 pop_u16_at(const u8* bytes, u32* index, u32 size) {
+    if (size < ((*index) + 2)) {
+        OUT_OF_BOUNDS;
+    }
     u8 byte1 = bytes[(*index)++];
     u8 byte2 = bytes[(*index)++];
     return (u16)((byte1 << 8) | byte2);

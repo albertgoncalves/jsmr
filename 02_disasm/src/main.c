@@ -352,7 +352,9 @@ static void print_op_codes(const u8* bytes, u32 byte_count) {
             break;
         }
         case OP_INVOKESPECIAL: {
-            printf(OP_FMT_U16, "invokespecial", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16,
+                   "invokespecial",
+                   pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_RETURN: {
@@ -360,11 +362,11 @@ static void print_op_codes(const u8* bytes, u32 byte_count) {
             break;
         }
         case OP_GETFIELD: {
-            printf(OP_FMT_U16, "getfield", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16, "getfield", pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_IFNE: {
-            printf(OP_FMT_I16, "ifne", (i16)pop_u16_at(bytes, &i));
+            printf(OP_FMT_I16, "ifne", (i16)pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_ICONST_0: {
@@ -380,7 +382,9 @@ static void print_op_codes(const u8* bytes, u32 byte_count) {
             break;
         }
         case OP_IF_ICMPNE: {
-            printf(OP_FMT_I16, "if_icmpne", (i16)pop_u16_at(bytes, &i));
+            printf(OP_FMT_I16,
+                   "if_icmpne",
+                   (i16)pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_ISTORE_1: {
@@ -400,15 +404,17 @@ static void print_op_codes(const u8* bytes, u32 byte_count) {
             break;
         }
         case OP_ISTORE: {
-            printf(OP_FMT_U8, "istore", pop_u8_at(bytes, &i));
+            printf(OP_FMT_U8, "istore", pop_u8_at(bytes, &i, byte_count));
             break;
         }
         case OP_ILOAD: {
-            printf(OP_FMT_U8, "iload", pop_u8_at(bytes, &i));
+            printf(OP_FMT_U8, "iload", pop_u8_at(bytes, &i, byte_count));
             break;
         }
         case OP_IF_ICMPGE: {
-            printf(OP_FMT_I16, "if_icmpge", (i16)pop_u16_at(bytes, &i));
+            printf(OP_FMT_I16,
+                   "if_icmpge",
+                   (i16)pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_ILOAD_2: {
@@ -428,21 +434,21 @@ static void print_op_codes(const u8* bytes, u32 byte_count) {
             break;
         }
         case OP_IINC: {
-            u8 index = pop_u8_at(bytes, &i);
-            i8 constant = (i8)pop_u8_at(bytes, &i);
+            u8 index = pop_u8_at(bytes, &i, byte_count);
+            i8 constant = (i8)pop_u8_at(bytes, &i, byte_count);
             printf(OP_FMT_U8_I8, "iinc", index, constant);
             break;
         }
         case OP_GOTO: {
-            printf(OP_FMT_I16, "goto", (i16)pop_u16_at(bytes, &i));
+            printf(OP_FMT_I16, "goto", (i16)pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_BIPUSH: {
-            printf(OP_FMT_U8, "bipush", pop_u8_at(bytes, &i));
+            printf(OP_FMT_U8, "bipush", pop_u8_at(bytes, &i, byte_count));
             break;
         }
         case OP_NEW: {
-            printf(OP_FMT_U16, "new", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16, "new", pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_DUP: {
@@ -458,23 +464,27 @@ static void print_op_codes(const u8* bytes, u32 byte_count) {
             break;
         }
         case OP_PUTFIELD: {
-            printf(OP_FMT_U16, "putfield", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16, "putfield", pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_GETSTATIC: {
-            printf(OP_FMT_U16, "getstatic", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16, "getstatic", pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_INVOKESTATIC: {
-            printf(OP_FMT_U16, "invokestatic", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16,
+                   "invokestatic",
+                   pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_INVOKEVIRTUAL: {
-            printf(OP_FMT_U16, "invokevirtual", pop_u16_at(bytes, &i));
+            printf(OP_FMT_U16,
+                   "invokevirtual",
+                   pop_u16_at(bytes, &i, byte_count));
             break;
         }
         case OP_LDC: {
-            printf(OP_FMT_U8, "ldc", pop_u8_at(bytes, &i));
+            printf(OP_FMT_U8, "ldc", pop_u8_at(bytes, &i, byte_count));
             break;
         }
         case OP_ILOAD_0: {
