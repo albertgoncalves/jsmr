@@ -84,6 +84,16 @@ void print_program(Program* program) {
     printf("\nprogram->attribute_count : %hu\n", program->attribute_count);
 }
 
+u16 get_constant_utf8_index(Program* program, const char* utf8) {
+    for (u16 i = 1; i < program->constant_count; ++i) {
+        Constant constant = program->constants[i - 1];
+        if ((constant.tag == CONST_UTF8) && get_eq(utf8, constant.string)) {
+            return i;
+        }
+    }
+    ERROR("Constant index not found");
+}
+
 #define WRITE_ERROR ERROR("Unable to write to file")
 
 void serialize_u8(File* file, u8 bytes) {
@@ -110,6 +120,30 @@ void serialize_string(File* file, const char* bytes) {
     u16 n = get_len(bytes);
     if (fwrite(bytes, sizeof(char), n, file) != n) {
         WRITE_ERROR;
+    }
+}
+
+void serialize_op(File* file, Op op) {
+    serialize_u8(file, (u8)op.tag);
+    switch (op.tag) {
+    case OP_ICONST0: {
+        break;
+    }
+    case OP_LDC: {
+        serialize_u8(file, op.u8);
+        break;
+    }
+    case OP_RETURN: {
+        break;
+    }
+    case OP_GETSTATIC: {
+        serialize_u16(file, op.u16);
+        break;
+    }
+    case OP_INVOKEVIRTUAL: {
+        serialize_u16(file, op.u16);
+        break;
+    }
     }
 }
 
@@ -167,40 +201,6 @@ void serialize_fields(File* file, Program* program) {
     serialize_u16(file, program->field_count);
     for (u16 i = 0; i < program->field_count; ++i) {
         NOT_IMPLEMENTED
-    }
-}
-
-u16 get_constant_utf8_index(Program* program, const char* utf8) {
-    for (u16 i = 1; i < program->constant_count; ++i) {
-        Constant constant = program->constants[i - 1];
-        if ((constant.tag == CONST_UTF8) && (get_eq(utf8, constant.string))) {
-            return i;
-        }
-    }
-    ERROR("Constant index not found");
-}
-
-void serialize_op(File* file, Op op) {
-    serialize_u8(file, (u8)op.tag);
-    switch (op.tag) {
-    case OP_ICONST0: {
-        break;
-    }
-    case OP_LDC: {
-        serialize_u8(file, op.u8);
-        break;
-    }
-    case OP_RETURN: {
-        break;
-    }
-    case OP_GETSTATIC: {
-        serialize_u16(file, op.u16);
-        break;
-    }
-    case OP_INVOKEVIRTUAL: {
-        serialize_u16(file, op.u16);
-        break;
-    }
     }
 }
 
