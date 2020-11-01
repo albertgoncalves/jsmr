@@ -216,21 +216,23 @@ void serialize_methods(File* file, Program* program) {
          */
         serialize_u16(file, 1);
         serialize_u16(file, get_constant_utf8_index(program, "Code"));
-        i64 offset_attribute_size = ftell(file);
+        u32 offset_attribute_size = (u32)ftell(file);
         serialize_u32(file, 0);
         serialize_u16(file, method.code.max_stack);
         serialize_u16(file, method.code.max_local);
-        i64 offset_code_size = ftell(file);
+        u32 offset_code_size = (u32)ftell(file);
         serialize_u32(file, 0);
         for (u16 j = 0; j < method.code.op_count; ++j) {
             serialize_op(file, method.code.ops[j]);
         }
-        u32 code_size = (u32)((ftell(file) - offset_code_size) - 4);
+        u32 code_size =
+            (u32)(((u32)ftell(file) - offset_code_size) - sizeof(u32));
         /* NOTE: Empty `method.code.exception_table`. */
         serialize_u16(file, 0);
         /* NOTE: Empty `method.code.attributes`. */
         serialize_u16(file, 0);
-        u32 attribute_size = (u32)((ftell(file) - offset_attribute_size) - 4);
+        u32 attribute_size =
+            (u32)(((u32)ftell(file) - offset_attribute_size) - sizeof(u32));
         fseek(file, offset_attribute_size, SEEK_SET);
         serialize_u32(file, attribute_size);
         fseek(file, offset_code_size, SEEK_SET);
