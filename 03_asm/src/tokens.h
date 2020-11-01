@@ -1,6 +1,8 @@
 #ifndef __TOKENS_H__
 #define __TOKENS_H__
 
+#include "prelude.h"
+
 typedef enum {
     TOKEN_ACC_ABSTRACT,
     TOKEN_ACC_ANNOTATION,

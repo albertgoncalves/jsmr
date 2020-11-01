@@ -1,5 +1,3 @@
-#include "prelude.h"
-
 #include "memory.c"
 
 i32 main(i32 n, const char** args) {

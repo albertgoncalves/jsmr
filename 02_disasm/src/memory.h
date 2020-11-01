@@ -1,6 +1,8 @@
 #ifndef __MEMORY_H__
 #define __MEMORY_H__
 
+#include "prelude.h"
+
 #define COUNT_BYTES               1024
 #define COUNT_TOKENS              64
 #define COUNT_CHARS               512
@@ -308,148 +310,35 @@ typedef struct {
     InnerClassEntry  inner_class_entries[COUNT_INNER_CLASS_ENTRIES];
 } Memory;
 
-static void set_file_to_bytes(Memory* memory, const char* filename) {
-    File* file = fopen(filename, "rb");
-    if (file == NULL) {
-        fprintf(stderr, "[ERROR] Unable to open file\n");
-        exit(EXIT_FAILURE);
-    }
-    fseek(file, 0, SEEK_END);
-    u32 file_size = (u32)ftell(file);
-    rewind(file);
-    if (COUNT_BYTES < file_size) {
-        fprintf(stderr, "[ERROR] File does not fit into memory\n");
-        exit(EXIT_FAILURE);
-    }
-    if (fread(&memory->bytes, sizeof(u8), file_size, file) != file_size) {
-        fprintf(stderr, "[ERROR] `fread` failed\n");
-        exit(EXIT_FAILURE);
-    }
-    memory->file_size = file_size;
-    fclose(file);
-}
-
 #define OUT_OF_BOUNDS                               \
     {                                               \
         fprintf(stderr, "[ERROR] Out of bounds\n"); \
         exit(EXIT_FAILURE);                         \
     }
 
-static u8 pop_u8(Memory* memory) {
-    if (memory->file_size <= memory->byte_index) {
-        OUT_OF_BOUNDS;
-    }
-    return memory->bytes[memory->byte_index++];
-}
+void set_file_to_bytes(Memory*, const char*);
 
-static u8* pop_u8_ref(Memory* memory) {
-    if (memory->file_size <= memory->byte_index) {
-        OUT_OF_BOUNDS;
-    }
-    return &memory->bytes[memory->byte_index++];
-}
+u8  pop_u8(Memory*);
+u8* pop_u8_ref(Memory*);
+u16 pop_u16(Memory*);
+u32 pop_u32(Memory*);
 
-static u16 pop_u16(Memory* memory) {
-    u32 next_index = memory->byte_index + 2;
-    if (memory->file_size < next_index) {
-        OUT_OF_BOUNDS;
-    }
-    u32 i = memory->byte_index;
-    u16 bytes = (u16)((memory->bytes[i] << 8) | (memory->bytes[i + 1]));
-    memory->byte_index = next_index;
-    return bytes;
-}
+u8  pop_u8_at(const u8*, u32*, u32);
+u16 pop_u16_at(const u8*, u32*, u32);
 
-static u8 pop_u8_at(const u8* bytes, u32* index, u32 size) {
-    if (size < ((*index) + 1)) {
-        OUT_OF_BOUNDS;
-    }
-    return bytes[(*index)++];
-}
+Token*            alloc_token(Memory*);
+Attribute*        alloc_attribute(Memory*);
+LineNumberEntry*  alloc_line_number_entry(Memory*);
+StackMapEntry*    alloc_stack_map_entry(Memory*);
+VerificationType* alloc_verification_type(Memory*);
+u16*              alloc_nest_member_class(Memory*);
+InnerClassEntry*  alloc_inner_class_entry(Memory*);
 
-static u16 pop_u16_at(const u8* bytes, u32* index, u32 size) {
-    if (size < ((*index) + 2)) {
-        OUT_OF_BOUNDS;
-    }
-    u8 byte1 = bytes[(*index)++];
-    u8 byte2 = bytes[(*index)++];
-    return (u16)((byte1 << 8) | byte2);
-}
+void push_tag_u16(Memory*, Tag, u16);
 
-static u32 pop_u32(Memory* memory) {
-    u32 next_index = memory->byte_index + 4;
-    if (memory->file_size < next_index) {
-        OUT_OF_BOUNDS;
-    }
-    u32 i = memory->byte_index;
-    u32 bytes = (u32)((memory->bytes[i] << 24) | (memory->bytes[i + 1] << 16) |
-                      (memory->bytes[i + 2] << 8) | memory->bytes[i + 3]);
-    memory->byte_index = next_index;
-    return bytes;
-}
+VerificationType* get_verification_type(Memory*);
+Attribute*        get_attribute(Memory*);
 
-static Token* alloc_token(Memory* memory) {
-    if (COUNT_TOKENS <= memory->token_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new token\n");
-        exit(EXIT_FAILURE);
-    }
-    return &memory->tokens[memory->token_index++];
-}
-
-static Attribute* alloc_attribute(Memory* memory) {
-    if (COUNT_ATTRIBS <= memory->attribute_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new attribute\n");
-        exit(EXIT_FAILURE);
-    }
-    Attribute* attribute = &memory->attributes[memory->attribute_index++];
-    attribute->next_attribute = NULL;
-    return attribute;
-}
-
-static LineNumberEntry* alloc_line_number_entry(Memory* memory) {
-    if (COUNT_LINE_NUMBER_ENTRIES <= memory->line_number_entry_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new line number entry\n");
-        exit(EXIT_FAILURE);
-    }
-    return &memory->line_number_entries[memory->line_number_entry_index++];
-}
-
-static StackMapEntry* alloc_stack_map_entry(Memory* memory) {
-    if (COUNT_STACK_MAP_ENTRIES <= memory->stack_map_entry_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new stack map entry\n");
-        exit(EXIT_FAILURE);
-    }
-    return &memory->stack_map_entries[memory->stack_map_entry_index++];
-}
-
-static VerificationType* alloc_verification_type(Memory* memory) {
-    if (COUNT_VERIFICATION_TYPES <= memory->verification_type_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new verification type\n");
-        exit(EXIT_FAILURE);
-    }
-    return &memory->verification_types[memory->verification_type_index++];
-}
-
-static u16* alloc_nest_member_class(Memory* memory) {
-    if (COUNT_NEST_MEMBER_CLASSES <= memory->nest_member_class_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new nest member class\n");
-        exit(EXIT_FAILURE);
-    }
-    return &memory->nest_member_classes[memory->nest_member_class_index++];
-}
-
-static InnerClassEntry* alloc_inner_class_entry(Memory* memory) {
-    if (COUNT_INNER_CLASS_ENTRIES <= memory->inner_class_entry_index) {
-        fprintf(stderr, "[ERROR] Unable to allocate new inner class entry\n");
-        exit(EXIT_FAILURE);
-    }
-    return &memory->inner_class_entries[memory->inner_class_entry_index++];
-}
-
-static void push_tag_u16(Memory* memory, Tag tag, u16 value) {
-    Token* token = alloc_token(memory);
-    token->tag = tag;
-    token->u16 = value;
-}
+void set_tokens(Memory*);
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef __PROGRAM_H__
 #define __PROGRAM_H__
 
+#include "prelude.h"
+
 typedef enum {
     CONST_CLASS,
     CONST_FIELD_REF,
