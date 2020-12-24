@@ -1,17 +1,15 @@
 class Main {
-    static class Struct { public int n; }
-
-    static int fib(Struct x) {
-        if (x.n == 0) {
+    static int fib(int x) {
+        if (x == 0) {
             return 0;
         }
-        if (x.n == 1) {
+        if (x == 1) {
             return 1;
         }
         int a = 0;
         int b = 1;
         int c = 1;
-        for (int m = 2; m < x.n; ++m) {
+        for (int n = 2; n < x; ++n) {
             a = b;
             b = c;
             c = a + b;
@@ -21,9 +19,7 @@ class Main {
 
     public static void main(String[] args) {
         for (int i = 0; i < 11; ++i) {
-            Struct struct = new Struct();
-            struct.n = i;
-            System.out.println(fib(struct));
+            System.out.println(fib(i));
         }
         System.out.println("Done!");
     }
