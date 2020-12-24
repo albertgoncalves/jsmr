@@ -34,17 +34,45 @@ typedef struct {
 } Constant;
 
 typedef enum {
-    OP_ICONST0 = 3,
+    OP_ICONST_0 = 3,
+    OP_ICONST_1 = 4,
+    OP_ICONST_2 = 5,
+    OP_BIPUSH = 16,
     OP_LDC = 18,
+    OP_ILOAD = 21,
+    OP_ILOAD_0 = 26,
+    OP_ILOAD_1 = 27,
+    OP_ILOAD_2 = 28,
+    OP_ILOAD_3 = 29,
+    OP_ISTORE = 54,
+    OP_ISTORE_1 = 60,
+    OP_ISTORE_2 = 61,
+    OP_ISTORE_3 = 62,
+    OP_IADD = 96,
+    OP_IINC = 132,
+    OP_IFNE = 154,
+    OP_IF_ICMPNE = 160,
+    OP_IF_ICMPGE = 162,
+    OP_GOTO = 167,
+    OP_IRETURN = 172,
     OP_RETURN = 177,
     OP_GETSTATIC = 178,
     OP_INVOKEVIRTUAL = 182,
+    OP_INVOKESTATIC = 184,
 } OpTag;
 
 typedef struct {
+    u8 u8;
+    i8 i8;
+} Pair;
+
+typedef struct {
     union {
-        u16 u16;
-        u8  u8;
+        Pair pair;
+        u16  u16;
+        i16  i16;
+        u8   u8;
+        i8   i8;
     };
     OpTag tag;
 } Op;
@@ -86,7 +114,9 @@ void print_program(Program*);
 u16 get_constant_utf8_index(Program*, const char*);
 
 void serialize_u8(File*, u8);
+void serialize_i8(File*, i8);
 void serialize_u16(File*, u16);
+void serialize_i16(File*, i16);
 void serialize_u32(File*, u32);
 
 void serialize_string(File*, const char*);

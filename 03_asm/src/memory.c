@@ -224,21 +224,21 @@ u32 get_unsigned(Memory* memory) {
     return token.number;
 }
 
-// i32 get_signed(Memory* memory) {
-//     Token token = pop_token(memory);
-//     Bool  negate = FALSE;
-//     if (token.tag == TOKEN_MINUS) {
-//         negate = TRUE;
-//         token = pop_token(memory);
-//     }
-//     if (token.tag != TOKEN_NUMBER) {
-//         UNEXPECTED_TOKEN(token.buffer, token.line);
-//     }
-//     if (negate) {
-//         return (i32)token.number * -1;
-//     }
-//     return (i32)token.number;
-// }
+i32 get_signed(Memory* memory) {
+    Token token = pop_token(memory);
+    Bool  negate = FALSE;
+    if (token.tag == TOKEN_MINUS) {
+        negate = TRUE;
+        token = pop_token(memory);
+    }
+    if (token.tag != TOKEN_NUMBER) {
+        UNEXPECTED_TOKEN(token.buffer, token.line);
+    }
+    if (negate) {
+        return (i32)token.number * -1;
+    }
+    return (i32)token.number;
+}
 
 u32 pop_number(Memory* memory) {
     Token token = pop_token(memory);
@@ -363,9 +363,58 @@ void set_method_code(Memory* memory, Method* method) {
         if (token.tag == TOKEN_OP) {
             ++method->code.op_count;
             Op* op = alloc_op(memory);
-            if (get_eq(token.buffer, "ldc")) {
+            if (get_eq(token.buffer, "iconst_0")) {
+                op->tag = OP_ICONST_0;
+            } else if (get_eq(token.buffer, "iconst_1")) {
+                op->tag = OP_ICONST_1;
+            } else if (get_eq(token.buffer, "iconst_2")) {
+                op->tag = OP_ICONST_2;
+            } else if (get_eq(token.buffer, "bipush")) {
+                op->tag = OP_BIPUSH;
+                op->i8 = (i8)get_signed(memory);
+            } else if (get_eq(token.buffer, "ldc")) {
                 op->tag = OP_LDC;
                 op->u8 = (u8)get_unsigned(memory);
+            } else if (get_eq(token.buffer, "iload")) {
+                op->tag = OP_ILOAD;
+                op->u8 = (u8)get_unsigned(memory);
+            } else if (get_eq(token.buffer, "iload_0")) {
+                op->tag = OP_ILOAD_0;
+            } else if (get_eq(token.buffer, "iload_1")) {
+                op->tag = OP_ILOAD_1;
+            } else if (get_eq(token.buffer, "iload_2")) {
+                op->tag = OP_ILOAD_2;
+            } else if (get_eq(token.buffer, "iload_3")) {
+                op->tag = OP_ILOAD_3;
+            } else if (get_eq(token.buffer, "istore")) {
+                op->tag = OP_ISTORE;
+                op->u8 = (u8)get_unsigned(memory);
+            } else if (get_eq(token.buffer, "istore_1")) {
+                op->tag = OP_ISTORE_1;
+            } else if (get_eq(token.buffer, "istore_2")) {
+                op->tag = OP_ISTORE_2;
+            } else if (get_eq(token.buffer, "istore_3")) {
+                op->tag = OP_ISTORE_3;
+            } else if (get_eq(token.buffer, "iadd")) {
+                op->tag = OP_IADD;
+            } else if (get_eq(token.buffer, "iinc")) {
+                op->tag = OP_IINC;
+                op->pair.u8 = (u8)get_unsigned(memory);
+                op->pair.i8 = (i8)get_signed(memory);
+            } else if (get_eq(token.buffer, "ifne")) {
+                op->tag = OP_IFNE;
+                op->i16 = (i16)get_signed(memory);
+            } else if (get_eq(token.buffer, "if_icmpne")) {
+                op->tag = OP_IF_ICMPNE;
+                op->i16 = (i16)get_signed(memory);
+            } else if (get_eq(token.buffer, "if_icmpge")) {
+                op->tag = OP_IF_ICMPGE;
+                op->i16 = (i16)get_signed(memory);
+            } else if (get_eq(token.buffer, "goto")) {
+                op->tag = OP_GOTO;
+                op->i16 = (i16)get_signed(memory);
+            } else if (get_eq(token.buffer, "ireturn")) {
+                op->tag = OP_IRETURN;
             } else if (get_eq(token.buffer, "return")) {
                 op->tag = OP_RETURN;
             } else if (get_eq(token.buffer, "getstatic")) {
@@ -374,8 +423,9 @@ void set_method_code(Memory* memory, Method* method) {
             } else if (get_eq(token.buffer, "invokevirtual")) {
                 op->tag = OP_INVOKEVIRTUAL;
                 op->u16 = (u16)get_unsigned(memory);
-            } else if (get_eq(token.buffer, "iconst0")) {
-                op->tag = OP_ICONST0;
+            } else if (get_eq(token.buffer, "invokestatic")) {
+                op->tag = OP_INVOKESTATIC;
+                op->u16 = (u16)get_unsigned(memory);
             } else {
                 UNEXPECTED_TOKEN(token.buffer, token.line);
             }

@@ -4,12 +4,12 @@
 #include "program.c"
 #include "tokens.c"
 
-#define SIZE_FILE       2048
-#define SIZE_BUFFER     1024
-#define COUNT_TOKENS    128
+#define SIZE_FILE       4096
+#define SIZE_BUFFER     2048
+#define COUNT_TOKENS    256
 #define COUNT_CONSTANTS 64
 #define COUNT_METHODS   4
-#define COUNT_OPS       16
+#define COUNT_OPS       64
 
 typedef struct {
     Program  program;
@@ -41,7 +41,7 @@ Token    pop_token(Memory*);
 TokenTag peek_token_tag(Memory*);
 
 u32 get_unsigned(Memory*);
-// i32 get_signed(Memory*);
+i32 get_signed(Memory*);
 
 u32 pop_number(Memory*);
 

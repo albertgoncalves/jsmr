@@ -102,9 +102,22 @@ void serialize_u8(File* file, u8 bytes) {
     }
 }
 
+void serialize_i8(File* file, i8 bytes) {
+    if (fwrite(&bytes, sizeof(i8), 1, file) != 1) {
+        WRITE_ERROR;
+    }
+}
+
 void serialize_u16(File* file, u16 bytes) {
     u16 swap_bytes = __builtin_bswap16(bytes);
     if (fwrite(&swap_bytes, sizeof(u16), 1, file) != 1) {
+        WRITE_ERROR;
+    }
+}
+
+void serialize_i16(File* file, i16 bytes) {
+    u16 swap_bytes = __builtin_bswap16(*((u16*)(&bytes)));
+    if (fwrite(&swap_bytes, sizeof(i16), 1, file) != 1) {
         WRITE_ERROR;
     }
 }
@@ -126,22 +139,47 @@ void serialize_string(File* file, const char* bytes) {
 void serialize_op(File* file, Op op) {
     serialize_u8(file, (u8)op.tag);
     switch (op.tag) {
-    case OP_ICONST0: {
-        break;
-    }
-    case OP_LDC: {
-        serialize_u8(file, op.u8);
-        break;
-    }
+    case OP_ICONST_0:
+    case OP_ICONST_1:
+    case OP_ICONST_2:
+    case OP_ILOAD_0:
+    case OP_ILOAD_1:
+    case OP_ILOAD_2:
+    case OP_ILOAD_3:
+    case OP_ISTORE_1:
+    case OP_ISTORE_2:
+    case OP_ISTORE_3:
+    case OP_IADD:
+    case OP_IRETURN:
     case OP_RETURN: {
         break;
     }
-    case OP_GETSTATIC: {
+    case OP_BIPUSH: {
+        serialize_i8(file, op.i8);
+        break;
+    }
+    case OP_LDC:
+    case OP_ILOAD:
+    case OP_ISTORE: {
+        serialize_u8(file, op.u8);
+        break;
+    }
+    case OP_IFNE:
+    case OP_IF_ICMPNE:
+    case OP_IF_ICMPGE:
+    case OP_GOTO: {
+        serialize_i16(file, op.i16);
+        break;
+    }
+    case OP_GETSTATIC:
+    case OP_INVOKEVIRTUAL:
+    case OP_INVOKESTATIC: {
         serialize_u16(file, op.u16);
         break;
     }
-    case OP_INVOKEVIRTUAL: {
-        serialize_u16(file, op.u16);
+    case OP_IINC: {
+        serialize_u8(file, op.pair.u8);
+        serialize_i8(file, op.pair.i8);
         break;
     }
     }
