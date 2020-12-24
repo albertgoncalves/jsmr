@@ -385,6 +385,7 @@ void set_method_code(Memory* memory, Method* method) {
             UNEXPECTED_TOKEN(token.buffer, token.line);
         }
     }
+    EXPECTED_TOKEN(TOKEN_RBRACE, memory);
 }
 
 void set_methods(Memory* memory) {
