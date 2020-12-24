@@ -1,4 +1,4 @@
-major_version 50
+major_version 49
 minor_version 0
 
 constants {
@@ -41,6 +41,11 @@ constants {
     "(I)I"                      ; 26
     name_and_type   25  26      ; 27
     method_ref      3   27      ; 28
+
+    "println_fib"               ; 29
+    "(I)V"                      ; 30
+    name_and_type   29  30      ; 31
+    method_ref      3   31      ; 32
 }
 
 access_flags { SUPER }
@@ -48,6 +53,7 @@ access_flags { SUPER }
 this_class  3
 super_class 5
 
+; void main(String[])
 method {
     access_flags { PUBLIC STATIC }
     name_index 12
@@ -66,19 +72,28 @@ method {
             .bipush         10
             .invokevirtual  24
 
-            .getstatic      17
+            .bipush         -10
+            .invokestatic   32
+
+            .iconst_1
+            .invokestatic   32
+
             .bipush         10
-            .invokestatic   28
-            .invokevirtual  24
+            .invokestatic   32
+
+            .bipush         20
+            .invokestatic   32
 
             .getstatic      17
             .ldc            11
             .invokevirtual  21
+
             .return
         }
     }
 }
 
+; Int fib(Int)
 method {
     access_flags { STATIC }
     name_index 25
@@ -90,14 +105,9 @@ method {
 
         {
             .iload_0
-            .ifne       5
-            .iconst_0
-            .ireturn
-
+            .iconst_2
+            .if_icmpge 5
             .iload_0
-            .iconst_1
-            .if_icmpne  5
-            .iconst_1
             .ireturn
 
             .iconst_0
@@ -121,8 +131,30 @@ method {
             .istore_3
             .iinc       4   1
             .goto       -17
+
             .iload_3
             .ireturn
+        }
+    }
+}
+
+; void println_fib(Int)
+method {
+    access_flags { STATIC }
+    name_index 29
+    type_index 30
+
+    code {
+        max_stack 2
+        max_local 1
+
+        {
+            .getstatic      17
+            .iload_0
+            .invokestatic   28
+            .invokevirtual  24
+
+            .return
         }
     }
 }
