@@ -93,7 +93,7 @@ method {
     }
 }
 
-; Int fib(Int)
+; int fib(int)
 method {
     access_flags { STATIC }
     name_index 25
@@ -138,7 +138,7 @@ method {
     }
 }
 
-; void println_fib(Int)
+; void println_fib(int)
 method {
     access_flags { STATIC }
     name_index 29
