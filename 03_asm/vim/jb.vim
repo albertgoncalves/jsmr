@@ -52,3 +52,5 @@ hi link CodeFields Keyword
 hi link Constants Keyword
 hi link Fields Keyword
 hi link MethodFields Keyword
+
+let b:current_syntax = "jb"
