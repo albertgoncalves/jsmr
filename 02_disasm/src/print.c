@@ -31,16 +31,8 @@ void print_op_codes(const u8* bytes, u32 byte_count) {
             printf(OP_FMT_I16, "ifne", (i16)pop_u16_at(bytes, &i, byte_count));
             break;
         }
-        case OP_ICONST_0: {
-            printf("iconst_0\n");
-            break;
-        }
         case OP_IRETURN: {
             printf("ireturn\n");
-            break;
-        }
-        case OP_ICONST_1: {
-            printf("iconst_1\n");
             break;
         }
         case OP_IF_ICMPNE: {
@@ -61,8 +53,20 @@ void print_op_codes(const u8* bytes, u32 byte_count) {
             printf("istore_3\n");
             break;
         }
+        case OP_ICONST_0: {
+            printf("iconst_0\n");
+            break;
+        }
+        case OP_ICONST_1: {
+            printf("iconst_1\n");
+            break;
+        }
         case OP_ICONST_2: {
             printf("iconst_2\n");
+            break;
+        }
+        case OP_ICONST_3: {
+            printf("iconst_3\n");
             break;
         }
         case OP_ISTORE: {
@@ -93,6 +97,10 @@ void print_op_codes(const u8* bytes, u32 byte_count) {
         }
         case OP_IADD: {
             printf("iadd\n");
+            break;
+        }
+        case OP_ISUB: {
+            printf("isub\n");
             break;
         }
         case OP_IINC: {
