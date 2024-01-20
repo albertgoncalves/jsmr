@@ -123,10 +123,10 @@ void serialize_string(File*, const char*);
 void serialize_op(File*, Op);
 
 void serialize_constants(File*, Program*);
-void serialize_interfaces(File*, Program*);
-void serialize_fields(File*, Program*);
+void serialize_interfaces(File*, const Program*);
+void serialize_fields(File*, const Program*);
 void serialize_methods(File*, Program*);
-void serialize_attributes(File*, Program*);
+void serialize_attributes(File*, const Program*);
 
 void serialize_program_to_file(Program*, const char*);
 

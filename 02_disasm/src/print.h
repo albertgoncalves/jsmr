@@ -22,7 +22,7 @@
 #define CONSTANT_FMT_INDEX "#%-3hu "
 
 void print_op_codes(const u8*, u32);
-void print_verification_table(VerificationType*, u16);
+void print_verification_table(const VerificationType*, u16);
 void print_attribute(Attribute*);
 void print_tokens(Memory*);
 

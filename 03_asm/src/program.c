@@ -228,14 +228,14 @@ void serialize_constants(File* file, Program* program) {
     }
 }
 
-void serialize_interfaces(File* file, Program* program) {
+void serialize_interfaces(File* file, const Program* program) {
     serialize_u16(file, program->interface_count);
     for (u16 i = 0; i < program->interface_count; ++i) {
         NOT_IMPLEMENTED
     }
 }
 
-void serialize_fields(File* file, Program* program) {
+void serialize_fields(File* file, const Program* program) {
     serialize_u16(file, program->field_count);
     for (u16 i = 0; i < program->field_count; ++i) {
         NOT_IMPLEMENTED
@@ -279,7 +279,7 @@ void serialize_methods(File* file, Program* program) {
     }
 }
 
-void serialize_attributes(File* file, Program* program) {
+void serialize_attributes(File* file, const Program* program) {
     serialize_u16(file, program->attribute_count);
     for (u16 i = 0; i < program->attribute_count; ++i) {
         NOT_IMPLEMENTED

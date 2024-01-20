@@ -174,8 +174,8 @@ void print_op_codes(const u8* bytes, u32 byte_count) {
     printf("    }\n");
 }
 
-void print_verification_table(VerificationType* verification_types,
-                              u16               verification_type_count) {
+void print_verification_table(const VerificationType* verification_types,
+                              u16 verification_type_count) {
     for (u16 i = 0; i < verification_type_count; ++i) {
         VerificationType verification_type = verification_types[i];
         switch (verification_type.tag) {
@@ -375,7 +375,7 @@ void print_attribute(Attribute* attribute) {
 }
 
 void print_tokens(Memory* memory) {
-    Token* tokens = memory->tokens;
+    const Token* tokens = memory->tokens;
     for (u32 i = 0; i < memory->token_index; ++i) {
         Token token = tokens[i];
         switch (token.tag) {
